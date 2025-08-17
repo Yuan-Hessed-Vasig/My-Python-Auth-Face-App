@@ -36,10 +36,12 @@ class AppReloader(FileSystemEventHandler):
             self.process.terminate()
             self.process.wait()
         
-        # Start new process
+        # Start new process with dev mode environment variable
         try:
-            self.process = subprocess.Popen([sys.executable, "main.py"])
-            print("✅ App started successfully!")
+            env = os.environ.copy()
+            env['DEV_MODE'] = 'true'
+            self.process = subprocess.Popen([sys.executable, "main.py"], env=env)
+            print("✅ App started successfully in dev mode!")
         except Exception as e:
             print(f"❌ Failed to start app: {e}")
     
@@ -52,7 +54,16 @@ class AppReloader(FileSystemEventHandler):
 def main():
     print("🔥 Starting development server with hot reload...")
     print("📁 Watching for file changes in: app/")
+    print("💾 State caching enabled - your current page will be preserved on reload!")
     print("🛑 Press Ctrl+C to stop")
+    
+    # Clean up old dev state file
+    try:
+        if os.path.exists(".dev_state.json"):
+            os.remove(".dev_state.json")
+            print("🗑️ Cleared old dev state")
+    except:
+        pass
     
     # Setup file watcher
     event_handler = AppReloader()
@@ -67,6 +78,14 @@ def main():
         print("\n🛑 Stopping development server...")
         observer.stop()
         event_handler.stop()
+        
+        # Clean up dev state file on exit
+        try:
+            if os.path.exists(".dev_state.json"):
+                os.remove(".dev_state.json")
+                print("🗑️ Cleaned up dev state file")
+        except:
+            pass
     
     observer.join()
     print("👋 Development server stopped.")

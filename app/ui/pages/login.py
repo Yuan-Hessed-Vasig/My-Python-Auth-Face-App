@@ -65,7 +65,7 @@ class LoginPage(ctk.CTkFrame):
         # Login button
         login_btn = ctk.CTkButton(
             button_frame,
-            text="Login",
+            text="Login   ",
             command=self._do_login,
             width=120,
             height=40,

@@ -10,6 +10,7 @@ class Shell(ctk.CTkFrame):
 
         # Navbar
         self.navbar = Navbar(self, title="🎓 School Attendance System")
+        self.navbar.pack(pady=10)
         
         # Body container
         self.body = ctk.CTkFrame(self, fg_color="transparent")
@@ -24,6 +25,19 @@ class Shell(ctk.CTkFrame):
         self.content.pack(side="left", fill="both", expand=True)
 
     def set_content(self, widget):
+        # Clear existing content safely
         for w in self.content.winfo_children():
-            w.destroy()
-        widget.pack(fill="both", expand=True, padx=20, pady=20)
+            try:
+                w.destroy()
+            except:
+                pass  # Widget already destroyed
+        
+        # Configure the widget with proper parent
+        try:
+            widget.configure(master=self.content)
+            widget.pack(fill="both", expand=True, padx=20, pady=20)
+        except Exception as e:
+            print(f"⚠️ Error setting content: {e}")
+            # Create fallback content
+            fallback = ctk.CTkLabel(self.content, text="Error loading page content")
+            fallback.pack(fill="both", expand=True, padx=20, pady=20)

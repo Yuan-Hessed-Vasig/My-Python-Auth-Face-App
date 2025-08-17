@@ -1,6 +1,8 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
+import os
+import atexit
 
 # Set CustomTkinter theme and color theme
 ctk.set_appearance_mode("dark")  # Modes: "System" (standard), "Dark", "Light"
@@ -12,6 +14,7 @@ from app.ui.pages.shell import Shell
 from app.ui.pages.dashboard import DashboardPage
 from app.ui.pages.students import StudentsPage
 from app.ui.pages.attendance import AttendancePage
+from app.utils.dev_state import DevStateManager, save_app_state, load_app_state
 
 class Root(ctk.CTk):
     def __init__(self):
@@ -27,7 +30,14 @@ class Root(ctk.CTk):
         self.container = ctk.CTkFrame(self); self.container.pack(fill="both", expand=True, padx=10, pady=10)
         self.shell = None
         self.current_user = None
-        self.show_home()
+        self.current_route = "home"
+        
+        # Setup state saving on exit para sa dev mode
+        if DevStateManager.is_dev_mode():
+            atexit.register(self._save_state_on_exit)
+        
+        # Restore state kung dev mode at may saved state
+        self._restore_dev_state()
 
     def run(self):
         self.mainloop()
@@ -35,22 +45,65 @@ class Root(ctk.CTk):
     def _reload_app(self):
         """Reload the app manually (F5 or Ctrl+R)"""
         print("🔄 Manual reload triggered...")
+        self._save_current_state()
         self.destroy()
         # Note: This just closes the app, you need to restart manually
+        
+    def _save_current_state(self):
+        """Save current application state para sa hot reload"""
+        if DevStateManager.is_dev_mode():
+            save_app_state(
+                current_user=self.current_user,
+                current_route=self.current_route
+            )
+    
+    def _save_state_on_exit(self):
+        """Save state when application exits"""
+        self._save_current_state()
+    
+    def _restore_dev_state(self):
+        """Restore application state from dev cache"""
+        if DevStateManager.is_dev_mode():
+            state = load_app_state()
+            self.current_user = state.get("current_user")
+            self.current_route = state.get("current_route", "home")
+            
+            print(f"🔄 Restoring dev state - User: {self.current_user}, Route: {self.current_route}")
+            
+            # Navigate to proper page based on saved state
+            if self.current_user and self.current_route != "home":
+                # User was logged in, go to shell
+                self.show_shell(self.current_route)
+            elif self.current_route == "login":
+                self.show_login()
+            elif self.current_route == "register":
+                self.show_register()
+            else:
+                self.show_home()
+        else:
+            # Production mode - normal startup
+            self.show_home()
 
     def _clear(self):
         for w in self.container.winfo_children():
             w.destroy()
 
     def show_home(self):
+        self.current_route = "home"
+        self.current_user = None
+        self._save_current_state()
         self._clear()
         HomePage(self.container, on_login=self.show_login, on_register=self.show_register).pack(fill="both", expand=True)
 
     def show_login(self):
+        self.current_route = "login"
+        self._save_current_state()
         self._clear()
         LoginPage(self.container, on_success=self._on_logged_in, on_back=self.show_home).pack(fill="both", expand=True)
 
     def show_register(self):
+        self.current_route = "register"
+        self._save_current_state()
         self._clear()
         RegisterPage(self.container, on_success=self.show_login, on_back=self.show_home).pack(fill="both", expand=True)
 
@@ -59,11 +112,15 @@ class Root(ctk.CTk):
         self.show_shell("dashboard")
 
     def show_shell(self, route: str):
+        self.current_route = route
+        self._save_current_state()
         self._clear()
         self.shell = Shell(self.container, on_nav_change=self._on_nav_change)
         self._on_nav_change(route)
 
     def _on_nav_change(self, route: str):
+        self.current_route = route
+        self._save_current_state()
         if route == "dashboard":
             frame = DashboardPage(self.shell.content)
         elif route == "students":
