@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from app.ui.widget.gradient_button import GradientButton
 
 
 class HomePage(ctk.CTkFrame):
@@ -29,30 +30,30 @@ class HomePage(ctk.CTkFrame):
         button_frame = ctk.CTkFrame(self, fg_color="transparent")
         button_frame.pack(pady=20)
 
-        # Login button with your first color
-        login_btn = ctk.CTkButton(
+        # Login gradient button
+        login_btn = GradientButton(
             button_frame,
             text="🔑 Login",
             command=self.on_login,
             width=180,
             height=55,
+            start_color="#8972f5",
+            end_color="#6061dd",
             font=ctk.CTkFont(size=16, weight="bold"),
             corner_radius=12,
-            fg_color="#8972f5",  # Your purple color
-            hover_color="#6061dd",  # Your blue color on hover
         )
         login_btn.pack(side="left", padx=15)
 
-        # Register button with your second color
-        register_btn = ctk.CTkButton(
+        # Register gradient button
+        register_btn = GradientButton(
             button_frame,
             text="✨ Register",
             command=self.on_register,
             width=180,
             height=55,
+            start_color="#6061dd",
+            end_color="#8972f5",
             font=ctk.CTkFont(size=16, weight="bold"),
             corner_radius=12,
-            fg_color="#6061dd",  # Your blue color
-            hover_color="#8972f5",  # Your purple color on hover
         )
         register_btn.pack(side="left", padx=15)
