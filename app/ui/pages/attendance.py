@@ -1,11 +1,18 @@
 import customtkinter as ctk
 from datetime import datetime
 from app.ui.widget.gradient_button import GradientButton
+from app.ui.widget.data_table import DataTable, AsyncDataTable
+from app.services.attendance_service import AttendanceService
+import threading
 
 class AttendancePage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master, fg_color="transparent")
-        self._build()
+        try:
+            self._build()
+        except Exception as e:
+            print(f"❌ Error building attendance page: {e}")
+            self._build_fallback()
     
     def _build(self):
         # Main container
@@ -121,23 +128,15 @@ class AttendancePage(ctk.CTkFrame):
         )
         log_title.grid(row=0, column=0, pady=(20, 10))
         
-        # Attendance log content
-        log_content = ctk.CTkScrollableFrame(log_frame)
-        log_content.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
-        log_content.grid_columnconfigure(0, weight=1)
-        
-        # Sample attendance entries
-        current_time = datetime.now()
-        sample_entries = [
-            ("John Doe", "SN1001", "08:15 AM", "✅ Present"),
-            ("Jane Smith", "SN1002", "08:17 AM", "✅ Present"),
-            ("Mike Johnson", "SN1003", "08:45 AM", "⏰ Late"),
-            ("Sarah Wilson", "SN1004", "08:16 AM", "✅ Present"),
-            ("David Brown", "SN1005", "09:15 AM", "⏰ Late"),
-        ]
-        
-        for i, (name, student_no, time, status) in enumerate(sample_entries):
-            self._create_attendance_entry(log_content, name, student_no, time, status, i)
+        # Attendance log with real data
+        self.attendance_table = AsyncDataTable(
+            log_frame,
+            data_loader=self._load_attendance_data,
+            height=300,
+            on_select=self._on_attendance_select,
+            on_double_click=self._on_attendance_double_click
+        )
+        self.attendance_table.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         
         # Statistics at bottom
         stats_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
@@ -152,9 +151,8 @@ class AttendancePage(ctk.CTkFrame):
         )
         date_label.grid(row=0, column=0, pady=10)
         
-        self._create_stat_item(stats_frame, "✅ Present", "45", 1)
-        self._create_stat_item(stats_frame, "⏰ Late", "8", 2)
-        self._create_stat_item(stats_frame, "❌ Absent", "12", 3)
+        # Load real attendance stats
+        self._load_and_display_attendance_stats(stats_frame)
     
     def _create_attendance_entry(self, parent, name, student_no, time, status, row):
         """Create an attendance log entry"""
@@ -223,10 +221,92 @@ class AttendancePage(ctk.CTkFrame):
         )
         value_label.pack(pady=(0, 10))
     
+    def _load_attendance_data(self):
+        """Load attendance data from database"""
+        try:
+            headers = AttendanceService.get_table_headers()
+            data = AttendanceService.get_attendance_for_table(50)  # Last 50 records
+            return headers, data
+        except Exception as e:
+            print(f"❌ Error loading attendance: {e}")
+            return ["Error"], [["Failed to load attendance data"]]
+    
+    def _load_and_display_attendance_stats(self, parent):
+        """Load and display real attendance statistics"""
+        # Create stats immediately with loading text
+        self._create_stat_item(parent, "✅ Present", "Loading...", 1)
+        self._create_stat_item(parent, "⏰ Late", "Loading...", 2)
+        self._create_stat_item(parent, "❌ Absent", "Loading...", 3)
+        
+        # Store parent reference for updating
+        self.attendance_stats_parent = parent
+        
+        def load_stats():
+            try:
+                stats = AttendanceService.get_attendance_stats()
+                # Update UI in main thread
+                self.after(0, lambda: self._update_attendance_stats_display(stats))
+            except Exception as e:
+                print(f"❌ Error loading attendance stats: {e}")
+                # Show error stats
+                error_stats = {"present": "Error", "late": "Error", "absent": "Error"}
+                self.after(0, lambda: self._update_attendance_stats_display(error_stats))
+        
+        thread = threading.Thread(target=load_stats, daemon=True)
+        thread.start()
+    
+    def _update_attendance_stats_display(self, stats):
+        """Update existing attendance stats display"""
+        # Find and update existing stat widgets instead of recreating
+        if hasattr(self, 'attendance_stats_parent') and self.attendance_stats_parent.winfo_exists():
+            # Clear and recreate stats
+            children = self.attendance_stats_parent.winfo_children()
+            for widget in children[1:]:  # Skip date label
+                widget.destroy()
+            
+            self._create_stat_item(self.attendance_stats_parent, "✅ Present", str(stats.get("present", 0)), 1)
+            self._create_stat_item(self.attendance_stats_parent, "⏰ Late", str(stats.get("late", 0)), 2)
+            self._create_stat_item(self.attendance_stats_parent, "❌ Absent", str(stats.get("absent", 0)), 3)
+    
+    def _on_attendance_select(self, row_data):
+        """Handle attendance selection in table"""
+        if row_data:
+            attendance_id = row_data[0]
+            student_number = row_data[1]
+            student_name = row_data[2]
+            status = row_data[5]
+            print(f"📋 Selected attendance: {student_name} ({student_number}) - {status}")
+    
+    def _on_attendance_double_click(self, row_data):
+        """Handle attendance double click in table"""
+        if row_data:
+            attendance_id = row_data[0]
+            student_name = row_data[2]
+            print(f"✏️ Edit attendance: {student_name} (ID: {attendance_id})")
+            # TODO: Open edit attendance dialog
+    
     def _start_camera(self):
         """Handle start camera button click"""
         print("🔄 Starting camera for face recognition...")
+        # TODO: Implement camera functionality
+        # For now, just refresh attendance table
+        self.attendance_table.refresh_data()
         
     def _stop_camera(self):
         """Handle stop camera button click"""
         print("🔄 Stopping camera...")
+        # TODO: Implement camera stop functionality
+    
+    def _build_fallback(self):
+        """Build fallback attendance page when main build fails"""
+        try:
+            error_label = ctk.CTkLabel(
+                self,
+                text="⚠️ Attendance Page Error\n\nUnable to load attendance page properly.\nPlease check your database connection.",
+                font=ctk.CTkFont(size=16),
+                text_color=("gray60", "gray40"),
+                justify="center"
+            )
+            error_label.pack(expand=True, fill="both", padx=50, pady=50)
+        except Exception as e:
+            print(f"❌ Error creating fallback attendance page: {e}")

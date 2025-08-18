@@ -5,3 +5,4 @@ Pillow
 customtkinter
 bcrypt
 watchdog
+tksheet

@@ -23,21 +23,68 @@ class Shell(ctk.CTkFrame):
         # Content area
         self.content = ctk.CTkFrame(self.body, corner_radius=10)
         self.content.pack(side="left", fill="both", expand=True)
-
-    def set_content(self, widget):
-        # Clear existing content safely
-        for w in self.content.winfo_children():
-            try:
-                w.destroy()
-            except:
-                pass  # Widget already destroyed
         
-        # Configure the widget with proper parent
+        # Store created pages (ChatGPT approach!)
+        self.pages = {}
+        self.current_page = None
+
+    def set_content(self, page_name: str, widget_factory=None):
+        """Set content using ChatGPT's approach - cache pages instead of destroying"""
         try:
-            widget.configure(master=self.content)
-            widget.pack(fill="both", expand=True, padx=20, pady=20)
+            # Hide current page if exists
+            if self.current_page and self.current_page in self.pages:
+                self.pages[self.current_page].pack_forget()
+            
+            # Create page if doesn't exist
+            if page_name not in self.pages:
+                if widget_factory:
+                    widget = widget_factory()
+                    if widget and hasattr(widget, 'pack'):
+                        self.pages[page_name] = widget
+                        print(f"✅ Created and cached page: {page_name}")
+                    else:
+                        raise ValueError(f"Invalid widget factory for {page_name}")
+                else:
+                    raise ValueError(f"No widget factory provided for {page_name}")
+            
+            # Show the requested page
+            self.pages[page_name].pack(fill="both", expand=True, padx=20, pady=20)
+            self.current_page = page_name
+            print(f"✅ Switched to page: {page_name}")
+            
         except Exception as e:
             print(f"⚠️ Error setting content: {e}")
-            # Create fallback content
-            fallback = ctk.CTkLabel(self.content, text="Error loading page content")
+            self._create_fallback_content(str(e))
+    
+    def _create_fallback_content(self, error_msg: str):
+        """Create fallback content when widget creation fails"""
+        try:
+            # Clear any existing content first
+            for widget in self.content.winfo_children():
+                widget.pack_forget()
+                
+            fallback = ctk.CTkLabel(
+                self.content, 
+                text=f"⚠️ Error loading page content\n\nError: {error_msg}\n\nPlease try navigating again",
+                font=ctk.CTkFont(size=14),
+                text_color=("gray60", "gray40"),
+                justify="center"
+            )
             fallback.pack(fill="both", expand=True, padx=20, pady=20)
+        except Exception as fallback_error:
+            print(f"❌ Critical error creating fallback: {fallback_error}")
+    
+    def clear_all_pages(self):
+        """Clear all cached pages - useful for refresh/logout"""
+        try:
+            for page_name, page_widget in self.pages.items():
+                try:
+                    page_widget.pack_forget()
+                    page_widget.destroy()
+                except:
+                    pass
+            self.pages.clear()
+            self.current_page = None
+            print("🗑️ Cleared all cached pages")
+        except Exception as e:
+            print(f"⚠️ Error clearing pages: {e}")

@@ -121,15 +121,27 @@ class Root(ctk.CTk):
     def _on_nav_change(self, route: str):
         self.current_route = route
         self._save_current_state()
-        if route == "dashboard":
-            frame = DashboardPage(self.shell.content)
-        elif route == "students":
-            frame = StudentsPage(self.shell.content)
-        elif route == "attendance":
-            frame = AttendancePage(self.shell.content)
-        else:
-            frame = ttk.Frame(self.shell.content)
-        self.shell.set_content(frame)
+        
+        # Use ChatGPT's approach - page caching with factories
+        widget_factory = self._get_page_factory(route)
+        self.shell.set_content(route, widget_factory)
+    
+    def _get_page_factory(self, route: str):
+        """Get factory function for creating pages (ChatGPT approach)"""
+        factories = {
+            "dashboard": lambda: DashboardPage(self.shell.content),
+            "students": lambda: StudentsPage(self.shell.content), 
+            "attendance": lambda: AttendancePage(self.shell.content),
+        }
+        
+        return factories.get(route, lambda: self._create_default_page(route))
+    
+    def _create_default_page(self, route: str):
+        """Create default page for unknown routes"""
+        default = ctk.CTkFrame(self.shell.content)
+        label = ctk.CTkLabel(default, text=f"📋 {route.title()} Page\nComing Soon!")
+        label.pack(expand=True)
+        return default
 
 def run_app():
     Root().run()
