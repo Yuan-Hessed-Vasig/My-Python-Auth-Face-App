@@ -1,10 +1,12 @@
 """
 StudentsService - Specific operations for students data
 Built on top of DataService for reusable database operations
+Now with pagination support!
 """
 
 from typing import List, Dict, Optional
 from app.services.data_service import DataService
+from app.services.pagination import PaginationParams, PaginationResult, PaginationService, get_pagination_defaults
 
 class StudentsService:
     """Service class for student-related database operations"""
@@ -103,6 +105,109 @@ class StudentsService:
     def get_table_headers() -> List[str]:
         """Get table headers for students table"""
         return ["ID", "Student Number", "Full Name", "Section", "Created Date"]
+    
+    # ========== PAGINATION METHODS ==========
+    
+    @staticmethod
+    def get_students_paginated(pagination_params: PaginationParams = None) -> PaginationResult:
+        """
+        Get students with pagination - like axios.get('/students', { params: { page, limit, search } })
+        
+        Args:
+            pagination_params: Pagination parameters (optional, uses defaults if None)
+        
+        Returns:
+            PaginationResult with students data and pagination metadata
+        """
+        if pagination_params is None:
+            defaults = get_pagination_defaults("students")
+            pagination_params = PaginationService.create_params(**defaults)
+        
+        # Define searchable columns
+        search_columns = ["first_name", "last_name", "student_number", "section"]
+        
+        # Define allowed sort columns
+        allowed_sort_columns = ["id", "student_number", "first_name", "last_name", "section", "created_at"]
+        
+        # Use DataService pagination
+        return DataService.get_paginated(
+            table_name="students",
+            pagination_params=pagination_params,
+            search_columns=search_columns,
+            allowed_sort_columns=allowed_sort_columns
+        )
+    
+    @staticmethod
+    def get_students_for_table_paginated(pagination_params: PaginationParams = None) -> tuple:
+        """
+        Get paginated students data formatted for table display
+        
+        Returns:
+            Tuple of (table_data, pagination_result)
+        """
+        result = StudentsService.get_students_paginated(pagination_params)
+        
+        # Convert to table format
+        table_data = []
+        for student in result.data:
+            row = [
+                student.get("id", ""),
+                student.get("student_number", ""),
+                f"{student.get('first_name', '')} {student.get('last_name', '')}".strip(),
+                student.get("section", ""),
+                student.get("created_at", "").strftime("%Y-%m-%d") if student.get("created_at") else ""
+            ]
+            table_data.append(row)
+        
+        return table_data, result
+    
+    @staticmethod
+    def search_students_paginated(
+        search_term: str, 
+        pagination_params: PaginationParams = None
+    ) -> PaginationResult:
+        """
+        Search students with pagination
+        
+        Args:
+            search_term: Search term
+            pagination_params: Pagination parameters (optional)
+        
+        Returns:
+            PaginationResult with matching students
+        """
+        if pagination_params is None:
+            defaults = get_pagination_defaults("students")
+            pagination_params = PaginationService.create_params(**defaults)
+        
+        # Set search term in pagination params
+        pagination_params.search_term = search_term
+        
+        return StudentsService.get_students_paginated(pagination_params)
+    
+    @staticmethod
+    def get_students_by_section_paginated(
+        section: str,
+        pagination_params: PaginationParams = None
+    ) -> PaginationResult:
+        """
+        Get students by section with pagination
+        
+        Args:
+            section: Section name
+            pagination_params: Pagination parameters (optional)
+        
+        Returns:
+            PaginationResult with students from the section
+        """
+        if pagination_params is None:
+            defaults = get_pagination_defaults("students")
+            pagination_params = PaginationService.create_params(**defaults)
+        
+        # Add section filter
+        pagination_params.filters = {"section": section}
+        
+        return StudentsService.get_students_paginated(pagination_params)
 
 # Convenience functions for easy access
 def get_all_students():

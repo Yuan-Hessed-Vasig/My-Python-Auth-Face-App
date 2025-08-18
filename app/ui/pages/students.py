@@ -3,11 +3,22 @@ from tkinter import messagebox
 from app.ui.widget.gradient_button import GradientButton
 from app.ui.widget.data_table import DataTable
 from app.services.students_service import StudentsService
+from app.services.pagination import PaginationParams, PaginationService
 import threading
 
 class StudentsPage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master, fg_color="transparent")
+        
+        # Pagination state
+        self.current_pagination_params = PaginationService.create_params(
+            page=1,
+            limit=25,
+            sort_by="student_number",
+            sort_order="ASC"
+        )
+        self.current_pagination_result = None
+        
         try:
             self._build()
         except Exception as e:
@@ -133,7 +144,7 @@ class StudentsPage(ctk.CTkFrame):
         table_frame.grid_columnconfigure(0, weight=1)
         table_frame.grid_rowconfigure(0, weight=1)
         
-        # Create data table with Actions column
+        # Create data table with Actions column and pagination
         self.students_table = DataTable(
             table_frame,
             headers=["ID", "Student Number", "Full Name", "Section", "Created Date", "Actions"],
@@ -145,6 +156,8 @@ class StudentsPage(ctk.CTkFrame):
             on_delete=self._delete_student_dialog,  # Handle delete clicks
             searchable=False,  # Disable built-in search since we have external search
             show_toolbar=False,  # Disable toolbar since buttons are in search area
+            show_pagination=True,  # Enable pagination controls
+            on_page_change=self._on_page_change,  # Handle page changes
             font_size=12,  # Better readability
             header_font_size=13  # Slightly larger headers
         )
@@ -247,65 +260,70 @@ class StudentsPage(ctk.CTkFrame):
             # TODO: Open edit student dialog
     
     def _on_search_change(self, event):
-        """Handle search entry changes"""
+        """Handle search entry changes with pagination"""
         search_term = self.search_entry.get().strip()
-        if len(search_term) >= 2:  # Start searching after 2 characters
-            self._search_students(search_term)
-        elif len(search_term) == 0:
-            # Refresh table to show all students
-            self._refresh_students_data()
-    
-    def _search_students(self, search_term):
-        """Search students and update table"""
-        def search():
-            try:
-                # Search students
-                students = StudentsService.search_students(search_term)
-                
-                # Convert to table format with Actions column
-                table_data = []
-                for student in students:
-                    row = [
-                        student.get("id", ""),
-                        student.get("student_number", ""),
-                        f"{student.get('first_name', '')} {student.get('last_name', '')}".strip(),
-                        student.get("section", ""),
-                        student.get("created_at", "").strftime("%Y-%m-%d") if student.get("created_at") else "",
-                        "✏️ 🗑️"  # Actions column
-                    ]
-                    table_data.append(row)
-                
-                # Update table in main thread
-                headers = StudentsService.get_table_headers()
-                self.after(0, lambda: self.students_table.update_data(headers, table_data))
-                
-            except Exception as e:
-                print(f"❌ Search error: {e}")
         
-        thread = threading.Thread(target=search, daemon=True)
-        thread.start()
+        # Update search term in pagination params
+        self.current_pagination_params.search_term = search_term
+        self.current_pagination_params.page = 1  # Reset to first page when searching
+        
+        if len(search_term) >= 2:  # Start searching after 2 characters
+            print(f"🔍 Searching for: {search_term}")
+            self._load_students_async()  # Use the same async loading with search term
+        elif len(search_term) == 0:
+            # Clear search and refresh
+            print("🔍 Clearing search")
+            self._load_students_async()
     
     def _load_students_async(self):
-        """Load students data asynchronously"""
+        """Load students data asynchronously with pagination"""
         def load_data():
             try:
-                data = StudentsService.get_students_for_table()
+                # Use paginated service
+                table_data, pagination_result = StudentsService.get_students_for_table_paginated(
+                    self.current_pagination_params
+                )
+                
                 # Add Actions column to each row
                 enhanced_data = []
-                for row in data:
+                for row in table_data:
                     # Add action buttons as the last column
                     enhanced_row = list(row) + ["✏️ 🗑️"]  # Edit and Delete icons
                     enhanced_data.append(enhanced_row)
                 
+                # Store pagination result
+                self.current_pagination_result = pagination_result
+                
                 # Update table in main thread
-                self.after(0, lambda: self.students_table.update_data(data=enhanced_data))
-                print(f"✅ Loaded {len(enhanced_data)} students with action buttons")
+                self.after(0, lambda: self._update_table_with_pagination(enhanced_data, pagination_result))
+                print(f"✅ Loaded page {pagination_result.page} with {len(enhanced_data)} students")
+                
             except Exception as e:
                 print(f"❌ Error loading students: {e}")
                 self.after(0, lambda: self.students_table.update_data(data=[["Error loading data", "", "", "", "", ""]]))
         
         thread = threading.Thread(target=load_data, daemon=True)
         thread.start()
+    
+    def _update_table_with_pagination(self, data, pagination_result):
+        """Update table with data and pagination info"""
+        # Update table data
+        self.students_table.update_data(data=data)
+        
+        # Update pagination
+        self.students_table.update_pagination(pagination_result)
+    
+    def _on_page_change(self, page: int, limit: int = None):
+        """Handle page change from pagination controls"""
+        # Update pagination parameters
+        self.current_pagination_params.page = page
+        if limit:
+            self.current_pagination_params.limit = limit
+        
+        print(f"📄 Changing to page {page} (limit: {self.current_pagination_params.limit})")
+        
+        # Reload data with new parameters
+        self._load_students_async()
     
     def _refresh_students_data(self):
         """Refresh students data"""

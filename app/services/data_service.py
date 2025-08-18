@@ -1,11 +1,13 @@
 """
 DataService - Python's equivalent of Axios for database operations
 Reusable database service layer para sa lahat ng database operations
+Now with pagination support!
 """
 
 import mysql.connector
 from typing import List, Dict, Any, Optional, Tuple
 from app.utils.config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+from app.services.pagination import PaginationParams, PaginationResult, PaginationService
 import logging
 
 class DataService:
@@ -150,6 +152,132 @@ class DataService:
         """Execute custom JOIN queries"""
         results = DataService.execute_query(query, params)
         return results or []
+    
+    # ========== PAGINATION METHODS ==========
+    
+    @staticmethod
+    def get_paginated(
+        table_name: str,
+        pagination_params: PaginationParams,
+        columns: List[str] = None,
+        search_columns: List[str] = None,
+        allowed_sort_columns: List[str] = None
+    ) -> PaginationResult:
+        """
+        Get paginated data from a table - like axios with pagination
+        
+        Args:
+            table_name: Name of the table
+            pagination_params: Pagination parameters
+            columns: Columns to select (default: *)
+            search_columns: Columns to search in
+            allowed_sort_columns: Allowed columns for sorting
+        
+        Returns:
+            PaginationResult with data and metadata
+        """
+        try:
+            # Build column list
+            column_list = ", ".join(columns) if columns else "*"
+            
+            # Build WHERE clause
+            where_clause, where_params = PaginationService.build_where_clause(
+                pagination_params, search_columns
+            )
+            
+            # Build ORDER BY clause
+            order_clause = PaginationService.build_order_clause(
+                pagination_params, allowed_sort_columns
+            )
+            
+            # Build LIMIT clause
+            limit_clause = PaginationService.build_limit_clause(pagination_params)
+            
+            # Build data query
+            data_query = f"""
+                SELECT {column_list}
+                FROM {table_name}
+                {where_clause}
+                {order_clause}
+                {limit_clause}
+            """
+            
+            # Build count query
+            count_query = f"""
+                SELECT COUNT(*)
+                FROM {table_name}
+                {where_clause}
+            """
+            
+            # Execute queries
+            data_results = DataService.execute_query(data_query, tuple(where_params))
+            count_result = DataService.execute_query(count_query, tuple(where_params))
+            
+            # Extract total count
+            total_count = count_result[0].get('COUNT(*)', 0) if count_result else 0
+            
+            # Create pagination result
+            return PaginationResult.from_params(
+                data=data_results or [],
+                total_count=total_count,
+                params=pagination_params
+            )
+            
+        except Exception as e:
+            print(f"❌ Pagination error: {e}")
+            return PaginationResult.from_params([], 0, pagination_params)
+    
+    @staticmethod
+    def get_paginated_with_query(
+        base_query: str,
+        pagination_params: PaginationParams,
+        query_params: tuple = None,
+        allowed_sort_columns: List[str] = None
+    ) -> PaginationResult:
+        """
+        Get paginated data with custom query - for complex JOINs
+        
+        Args:
+            base_query: Base SELECT query (without ORDER BY, LIMIT)
+            pagination_params: Pagination parameters
+            query_params: Parameters for the base query
+            allowed_sort_columns: Allowed columns for sorting
+        
+        Returns:
+            PaginationResult with data and metadata
+        """
+        try:
+            # Build ORDER BY clause
+            order_clause = PaginationService.build_order_clause(
+                pagination_params, allowed_sort_columns
+            )
+            
+            # Build LIMIT clause
+            limit_clause = PaginationService.build_limit_clause(pagination_params)
+            
+            # Build full query
+            data_query = f"{base_query} {order_clause} {limit_clause}"
+            
+            # Build count query
+            count_query = PaginationService.build_count_query(base_query)
+            
+            # Execute queries
+            data_results = DataService.execute_query(data_query, query_params)
+            count_result = DataService.execute_query(count_query, query_params)
+            
+            # Extract total count
+            total_count = count_result[0].get('COUNT(*)', 0) if count_result else 0
+            
+            # Create pagination result
+            return PaginationResult.from_params(
+                data=data_results or [],
+                total_count=total_count,
+                params=pagination_params
+            )
+            
+        except Exception as e:
+            print(f"❌ Custom pagination error: {e}")
+            return PaginationResult.from_params([], 0, pagination_params)
 
 # Test connection function
 def test_connection():

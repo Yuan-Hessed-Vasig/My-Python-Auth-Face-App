@@ -13,6 +13,7 @@ except ImportError:
 
 from typing import List, Dict, Callable, Optional
 import threading
+from app.services.pagination import PaginationParams, PaginationResult
 
 class DataTable(ctk.CTkFrame):
     """
@@ -37,6 +38,9 @@ class DataTable(ctk.CTkFrame):
         on_refresh: Optional[Callable] = None,
         searchable: bool = True,
         show_toolbar: bool = True,
+        show_pagination: bool = False,
+        pagination_result: PaginationResult = None,
+        on_page_change: Optional[Callable] = None,
         **kwargs
     ):
         super().__init__(master, **kwargs)
@@ -53,6 +57,9 @@ class DataTable(ctk.CTkFrame):
         self.on_refresh = on_refresh
         self.searchable = searchable
         self.show_toolbar = show_toolbar
+        self.show_pagination = show_pagination
+        self.pagination_result = pagination_result
+        self.on_page_change = on_page_change
         self.height = height
         self.width = width
         
@@ -64,24 +71,32 @@ class DataTable(ctk.CTkFrame):
         self._build_widget()
     
     def _build_widget(self):
-        """Build the complete widget with toolbar and table"""
-        # Configure grid
+        """Build the complete widget with toolbar, table, and pagination"""
+        # Configure grid - adjust based on what we're showing
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)  # Table row expands
+        
+        current_row = 0
         
         # Create toolbar if requested
         if self.show_toolbar:
             self._create_toolbar()
+            current_row += 1
+        
+        # Table row expands
+        self.grid_rowconfigure(current_row, weight=1)
         
         # Create table container
         self.table_frame = ctk.CTkFrame(self)
-        if self.show_toolbar:
-            self.table_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 5))
-        else:
-            self.table_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.table_frame.grid(row=current_row, column=0, sticky="nsew", padx=5, pady=5)
+        current_row += 1
         
         # Create the actual table
         self._create_table()
+        
+        # Create pagination if requested
+        if self.show_pagination:
+            self._create_pagination()
+            current_row += 1
     
     def _create_toolbar(self):
         """Create CRUD toolbar (ChatGPT approach)"""
@@ -171,6 +186,167 @@ class DataTable(ctk.CTkFrame):
                 font=ctk.CTkFont(size=12)
             )
             search_btn.pack(side="left", padx=2)
+    
+    def _create_pagination(self):
+        """Create pagination controls"""
+        if not self.pagination_result:
+            return
+        
+        # Find the correct row for pagination (after table)
+        pagination_row = 2 if self.show_toolbar else 1
+        
+        pagination_frame = ctk.CTkFrame(self, fg_color="transparent")
+        pagination_frame.grid(row=pagination_row, column=0, sticky="ew", padx=5, pady=5)
+        pagination_frame.grid_columnconfigure(1, weight=1)  # Center spacer
+        
+        # Left side - Page info
+        page_info_frame = ctk.CTkFrame(pagination_frame, fg_color="transparent")
+        page_info_frame.grid(row=0, column=0, sticky="w")
+        
+        page_info_label = ctk.CTkLabel(
+            page_info_frame,
+            text=self.pagination_result.get_page_info(),
+            font=ctk.CTkFont(size=11),
+            text_color=("gray60", "gray40")
+        )
+        page_info_label.pack(side="left", padx=5)
+        
+        # Right side - Navigation controls
+        nav_frame = ctk.CTkFrame(pagination_frame, fg_color="transparent")
+        nav_frame.grid(row=0, column=2, sticky="e")
+        
+        # First button
+        if self.pagination_result.page > 1:
+            first_btn = ctk.CTkButton(
+                nav_frame,
+                text="⏮️",
+                command=lambda: self._change_page(1),
+                width=30,
+                height=30,
+                font=ctk.CTkFont(size=12)
+            )
+            first_btn.pack(side="left", padx=1)
+        
+        # Previous button
+        if self.pagination_result.has_prev:
+            prev_btn = ctk.CTkButton(
+                nav_frame,
+                text="◀️",
+                command=lambda: self._change_page(self.pagination_result.page - 1),
+                width=30,
+                height=30,
+                font=ctk.CTkFont(size=12)
+            )
+            prev_btn.pack(side="left", padx=1)
+        
+        # Page numbers
+        page_numbers = self.pagination_result.get_page_numbers()
+        for page_num in page_numbers:
+            if page_num == self.pagination_result.page:
+                # Current page (highlighted)
+                page_btn = ctk.CTkButton(
+                    nav_frame,
+                    text=str(page_num),
+                    command=lambda p=page_num: self._change_page(p),
+                    width=35,
+                    height=30,
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    fg_color="#1f538d",
+                    hover_color="#4a9eff"
+                )
+            else:
+                # Other pages
+                page_btn = ctk.CTkButton(
+                    nav_frame,
+                    text=str(page_num),
+                    command=lambda p=page_num: self._change_page(p),
+                    width=35,
+                    height=30,
+                    font=ctk.CTkFont(size=12),
+                    fg_color="transparent",
+                    text_color=("gray60", "gray40"),
+                    hover_color=("gray80", "gray20")
+                )
+            page_btn.pack(side="left", padx=1)
+        
+        # Next button
+        if self.pagination_result.has_next:
+            next_btn = ctk.CTkButton(
+                nav_frame,
+                text="▶️",
+                command=lambda: self._change_page(self.pagination_result.page + 1),
+                width=30,
+                height=30,
+                font=ctk.CTkFont(size=12)
+            )
+            next_btn.pack(side="left", padx=1)
+        
+        # Last button
+        if self.pagination_result.page < self.pagination_result.total_pages:
+            last_btn = ctk.CTkButton(
+                nav_frame,
+                text="⏭️",
+                command=lambda: self._change_page(self.pagination_result.total_pages),
+                width=30,
+                height=30,
+                font=ctk.CTkFont(size=12)
+            )
+            last_btn.pack(side="left", padx=1)
+        
+        # Items per page selector
+        per_page_frame = ctk.CTkFrame(pagination_frame, fg_color="transparent")
+        per_page_frame.grid(row=0, column=3, sticky="e", padx=(10, 0))
+        
+        per_page_label = ctk.CTkLabel(
+            per_page_frame,
+            text="Per page:",
+            font=ctk.CTkFont(size=11),
+            text_color=("gray60", "gray40")
+        )
+        per_page_label.pack(side="left", padx=(0, 5))
+        
+        per_page_values = ["10", "25", "50", "100"]
+        current_limit = str(self.pagination_result.limit)
+        
+        self.per_page_combo = ctk.CTkComboBox(
+            per_page_frame,
+            values=per_page_values,
+            command=self._change_per_page,
+            width=70,
+            height=30,
+            font=ctk.CTkFont(size=11)
+        )
+        self.per_page_combo.set(current_limit)
+        self.per_page_combo.pack(side="left")
+    
+    def _change_page(self, page: int):
+        """Handle page change"""
+        if self.on_page_change:
+            self.on_page_change(page)
+    
+    def _change_per_page(self, limit_str: str):
+        """Handle per page change"""
+        if self.on_page_change:
+            try:
+                limit = int(limit_str)
+                # Call page change with page 1 and new limit
+                self.on_page_change(1, limit)
+            except ValueError:
+                print(f"⚠️ Invalid limit: {limit_str}")
+    
+    def update_pagination(self, pagination_result: PaginationResult):
+        """Update pagination with new result"""
+        self.pagination_result = pagination_result
+        
+        # Rebuild pagination if it's showing
+        if self.show_pagination:
+            # Remove existing pagination
+            pagination_row = 2 if self.show_toolbar else 1
+            for widget in self.grid_slaves(row=pagination_row):
+                widget.destroy()
+            
+            # Recreate pagination
+            self._create_pagination()
     
     def _safe_call(self, func):
         """Safely call a callback function"""
