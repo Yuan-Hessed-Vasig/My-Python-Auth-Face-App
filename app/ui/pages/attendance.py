@@ -4,11 +4,29 @@ from app.ui.widget.gradient_button import GradientButton
 from app.ui.widget.data_table import DataTable, AsyncDataTable
 from app.services.attendance_service import AttendanceService
 import threading
+import cv2
+from PIL import Image, ImageTk
+from app.services.face.detector import detect_faces
+from app.services.face.recognition_algorithm import (
+    FaceRecognitionEngine,
+)
+from app.services.students_service import StudentsService
+import time
+import os
 
 class AttendancePage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master, fg_color="transparent")
         try:
+            # Camera state
+            self._camera_running = False
+            self._camera_thread = None
+            self._cap = None
+            self._latest_photo = None  # Keep reference to PhotoImage
+            self._fr_engine = None
+            self._students_dir = self._resolve_students_dir()
+            self._init_recognition_engine()
+            self._student_info_cache = {}
             self._build()
         except Exception as e:
             print(f"❌ Error building attendance page: {e}")
@@ -103,17 +121,18 @@ class AttendancePage(ctk.CTkFrame):
         camera_title.grid(row=0, column=0, pady=(20, 10))
         
         # Camera placeholder
-        camera_placeholder = ctk.CTkFrame(camera_frame, corner_radius=10)
-        camera_placeholder.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
-        
-        camera_label = ctk.CTkLabel(
-            camera_placeholder,
+        self.camera_placeholder = ctk.CTkFrame(camera_frame, corner_radius=10)
+        self.camera_placeholder.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+
+        # Image label (will display camera frames)
+        self.camera_label = ctk.CTkLabel(
+            self.camera_placeholder,
             text="📷\n\nCamera Feed\nComing Soon!\n\nFeatures:\n• Real-time face detection\n• Student recognition\n• Automatic attendance marking\n• Live preview\n• Multiple face detection",
             font=ctk.CTkFont(size=16),
             text_color=("gray60", "gray40"),
             justify="center"
         )
-        camera_label.pack(expand=True, fill="both", padx=20, pady=20)
+        self.camera_label.pack(expand=True, fill="both", padx=20, pady=20)
         
         # Attendance log section
         log_frame = ctk.CTkFrame(content_frame, corner_radius=10)
@@ -287,15 +306,189 @@ class AttendancePage(ctk.CTkFrame):
     
     def _start_camera(self):
         """Handle start camera button click"""
+        if self._camera_running:
+            print("ℹ️ Camera already running")
+            return
         print("🔄 Starting camera for face recognition...")
-        # TODO: Implement camera functionality
-        # For now, just refresh attendance table
-        self.attendance_table.refresh_data()
+
+        # Try to open default camera (prefer DirectShow on Windows)
+        cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+        if not cap or not cap.isOpened():
+            cap = cv2.VideoCapture(0)
+        if not cap or not cap.isOpened():
+            print("❌ Unable to open camera")
+            return
+
+        self._cap = cap
+        self._camera_running = True
+
+        def run_loop():
+            try:
+                self._camera_loop()
+            except Exception as e:
+                print(f"❌ Camera loop error: {e}")
+            finally:
+                # Ensure resources are released
+                if self._cap is not None:
+                    try:
+                        self._cap.release()
+                    except Exception:
+                        pass
+                self._cap = None
+                self._camera_running = False
+
+        self._camera_thread = threading.Thread(target=run_loop, daemon=True)
+        self._camera_thread.start()
         
     def _stop_camera(self):
         """Handle stop camera button click"""
+        if not self._camera_running:
+            print("ℹ️ Camera not running")
+            return
         print("🔄 Stopping camera...")
-        # TODO: Implement camera stop functionality
+        self._camera_running = False
+        # Wait briefly for thread to exit
+        if self._camera_thread and self._camera_thread.is_alive():
+            self._camera_thread.join(timeout=1.0)
+        self._camera_thread = None
+        # Clear image
+        def clear_label():
+            self.camera_label.configure(image=None, text="📷\n\nCamera Stopped")
+        self.after(0, clear_label)
+
+    def _camera_loop(self):
+        """Read frames, detect faces, and update UI while running."""
+        while self._camera_running and self._cap is not None and self._cap.isOpened():
+            ret, frame_bgr = self._cap.read()
+            if not ret or frame_bgr is None:
+                time.sleep(0.02)
+                continue
+
+            # Perform recognition if engine available; else fallback to Haar detection
+            annotated_bgr = frame_bgr
+            if self._fr_engine is not None:
+                try:
+                    annotated_bgr, detections = self._fr_engine.recognize_frame(frame_bgr, draw_annotations=False)
+                    # Draw labels and enrich with DB details
+                    annotated_bgr = self._annotate_with_names(annotated_bgr, detections)
+                except Exception as e:
+                    print(f"⚠️ recognition error, falling back to Haar: {e}")
+                    annotated_bgr = self._haar_annotate(frame_bgr)
+            else:
+                annotated_bgr = self._haar_annotate(frame_bgr)
+
+            # Convert to RGB for PIL
+            frame_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(frame_rgb)
+
+            # Resize to fit placeholder while keeping aspect ratio
+            target_w = max(1, self.camera_placeholder.winfo_width())
+            target_h = max(1, self.camera_placeholder.winfo_height())
+            if target_w > 1 and target_h > 1:
+                image = image.copy()
+                image.thumbnail((target_w, target_h), Image.LANCZOS)
+
+            photo = ImageTk.PhotoImage(image=image)
+            self._latest_photo = photo  # prevent GC
+
+            def update_image():
+                self.camera_label.configure(image=photo, text="")
+
+            self.after(0, update_image)
+
+            # Throttle a bit
+            time.sleep(0.01)
+
+    def _haar_annotate(self, frame_bgr):
+        """Fallback: detect faces via Haar cascade and draw boxes only."""
+        try:
+            gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+            faces = detect_faces(gray)
+            annotated = frame_bgr.copy()
+            for (x, y, w, h) in faces:
+                cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                # Label as UNKNOWN for clarity
+                cv2.rectangle(annotated, (x, y + h - 30), (x + w, y + h), (128, 128, 128), cv2.FILLED)
+                cv2.putText(annotated, "UNKNOWN", (x + 6, y + h - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, lineType=cv2.LINE_AA)
+            return annotated
+        except Exception as e:
+            print(f"⚠️ Haar detection error: {e}")
+            return frame_bgr
+
+    def _annotate_with_names(self, frame_bgr, detections):
+        """Draw rectangles and labels, using DB info when recognized."""
+        annotated = frame_bgr.copy()
+        for d in detections:
+            left, top, right, bottom = d.get("left"), d.get("top"), d.get("right"), d.get("bottom")
+            is_known = d.get("is_known", False)
+            name_key = d.get("name", "UNKNOWN")
+
+            if is_known and name_key:
+                # Lookup extra info from DB once; cache by uppercase name
+                label_text = name_key
+                try:
+                    if name_key not in self._student_info_cache:
+                        # Try to search by name via StudentsService
+                        first_last = name_key.title().split()
+                        search_term = first_last[-1]
+                        matches = StudentsService.search_students(search_term)
+                        info = None
+                        for row in matches or []:
+                            full = f"{row.get('first_name','')} {row.get('last_name','')}".strip().upper()
+                            if full == name_key:
+                                info = row
+                                break
+                        self._student_info_cache[name_key] = info
+                    info = self._student_info_cache.get(name_key)
+                    if info:
+                        section = info.get("section") or ""
+                        student_no = info.get("student_number") or ""
+                        if section or student_no:
+                            label_text = f"{name_key} | {student_no or section}"
+                except Exception as e:
+                    print(f"⚠️ Student info lookup failed for {name_key}: {e}")
+
+                color = (0, 200, 0)
+                cv2.rectangle(annotated, (left, top), (right, bottom), color, 2)
+                cv2.rectangle(annotated, (left, bottom - 35), (right, bottom), color, cv2.FILLED)
+                cv2.putText(annotated, label_text, (left + 6, bottom - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, lineType=cv2.LINE_AA)
+            else:
+                color = (128, 128, 128)
+                cv2.rectangle(annotated, (left, top), (right, bottom), color, 2)
+                cv2.rectangle(annotated, (left, bottom - 35), (right, bottom), color, cv2.FILLED)
+                cv2.putText(annotated, "UNKNOWN", (left + 6, bottom - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, lineType=cv2.LINE_AA)
+        return annotated
+
+    def _resolve_students_dir(self):
+        """Resolve default path to Images/Students from project root."""
+        # attendance.py -> app/ui/pages/attendance.py
+        # project root is three levels up from app/ui/pages
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(current_dir, "..", "..", ".."))
+        default_dir = os.path.join(project_root, "Images", "Students")
+        return default_dir
+
+    def _init_recognition_engine(self):
+        """Initialize FaceRecognitionEngine by loading encodings if folder exists."""
+        try:
+            if os.path.isdir(self._students_dir):
+                engine = FaceRecognitionEngine(match_threshold=0.50, process_every_n_frames=3)
+                # Load encodings lazily on demand to avoid blocking UI thread
+                def _load():
+                    try:
+                        engine.update_known_from_directory(self._students_dir)
+                        print(f"✅ Loaded {len(engine.known_encodings)} encodings from {self._students_dir}")
+                        self._fr_engine = engine
+                    except Exception as e:
+                        print(f"⚠️ Failed to load encodings: {e}")
+                        self._fr_engine = None
+                threading.Thread(target=_load, daemon=True).start()
+            else:
+                print(f"ℹ️ Students directory not found: {self._students_dir}. Using Haar cascade only.")
+                self._fr_engine = None
+        except Exception as e:
+            print(f"⚠️ Recognition engine init error: {e}")
+            self._fr_engine = None
     
     def _build_fallback(self):
         """Build fallback attendance page when main build fails"""

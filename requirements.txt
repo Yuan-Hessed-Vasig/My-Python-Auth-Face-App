@@ -6,3 +6,4 @@ customtkinter
 bcrypt
 watchdog
 tksheet
+face-recognition
