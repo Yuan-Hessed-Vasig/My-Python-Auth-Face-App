@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from datetime import datetime
 from app.ui.widget.gradient_button import GradientButton
-from app.ui.widget.data_table import DataTable, AsyncDataTable
+from app.ui.widget.data_table import DataTable
 from app.services.attendance_service import AttendanceService
 import threading
 import cv2
@@ -10,6 +10,7 @@ from app.services.face.detector import detect_faces
 from app.services.face.recognition_algorithm import (
     FaceRecognitionEngine,
 )
+from app.utils.performance_config import PerformanceConfig
 from app.services.students_service import StudentsService
 import time
 import os
@@ -27,6 +28,8 @@ class AttendancePage(ctk.CTkFrame):
             self._students_dir = self._resolve_students_dir()
             self._init_recognition_engine()
             self._student_info_cache = {}
+            self._last_logged_at_by_student_id = {}
+            self._detected_card_ids = set()
             self._build()
         except Exception as e:
             print(f"❌ Error building attendance page: {e}")
@@ -147,162 +150,18 @@ class AttendancePage(ctk.CTkFrame):
         )
         log_title.grid(row=0, column=0, pady=(20, 10))
         
-        # Attendance log with real data
-        self.attendance_table = AsyncDataTable(
+        # Detected students cards (shows each recognized student once per session)
+        self.detected_cards_frame = ctk.CTkScrollableFrame(
             log_frame,
-            data_loader=self._load_attendance_data,
-            height=300,
-            on_select=self._on_attendance_select,
-            on_double_click=self._on_attendance_double_click
+            corner_radius=10,
+            height=400  # Increased height since we removed the table
         )
-        self.attendance_table.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        self.detected_cards_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         
-        # Statistics at bottom
-        stats_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-        stats_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 20))
-        stats_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        
-        current_date = datetime.now().strftime("%B %d, %Y")
-        date_label = ctk.CTkLabel(
-            stats_frame,
-            text=f"📅 {current_date}",
-            font=ctk.CTkFont(size=14, weight="bold")
-        )
-        date_label.grid(row=0, column=0, pady=10)
-        
-        # Load real attendance stats
-        self._load_and_display_attendance_stats(stats_frame)
     
-    def _create_attendance_entry(self, parent, name, student_no, time, status, row):
-        """Create an attendance log entry"""
-        entry_frame = ctk.CTkFrame(parent, corner_radius=8)
-        entry_frame.grid(row=row, column=0, sticky="ew", pady=5, padx=5)
-        entry_frame.grid_columnconfigure(1, weight=1)
-        
-        # Status icon
-        status_color = "#10b981" if "Present" in status else "#f59e0b" if "Late" in status else "#ef4444"
-        status_label = ctk.CTkLabel(
-            entry_frame,
-            text=status.split()[0],  # Just the emoji
-            font=ctk.CTkFont(size=20),
-            width=40
-        )
-        status_label.grid(row=0, column=0, padx=(15, 10), pady=10)
-        
-        # Student info
-        info_frame = ctk.CTkFrame(entry_frame, fg_color="transparent")
-        info_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
-        
-        name_label = ctk.CTkLabel(
-            info_frame,
-            text=name,
-            font=ctk.CTkFont(size=14, weight="bold"),
-            anchor="w"
-        )
-        name_label.pack(anchor="w")
-        
-        details_label = ctk.CTkLabel(
-            info_frame,
-            text=f"{student_no} • {time}",
-            font=ctk.CTkFont(size=12),
-            text_color=("gray60", "gray40"),
-            anchor="w"
-        )
-        details_label.pack(anchor="w")
-        
-        # Status text
-        status_text = ctk.CTkLabel(
-            entry_frame,
-            text=status.split()[-1],  # Just the status word
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color=status_color,
-            width=80
-        )
-        status_text.grid(row=0, column=2, padx=(10, 15), pady=10)
     
-    def _create_stat_item(self, parent, title, value, col):
-        """Create a statistics item"""
-        stat_frame = ctk.CTkFrame(parent, corner_radius=8)
-        stat_frame.grid(row=0, column=col, sticky="ew", padx=5, pady=10)
-        
-        title_label = ctk.CTkLabel(
-            stat_frame,
-            text=title,
-            font=ctk.CTkFont(size=12, weight="bold")
-        )
-        title_label.pack(pady=(10, 2))
-        
-        value_label = ctk.CTkLabel(
-            stat_frame,
-            text=value,
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color=("#1f538d", "#4a9eff")
-        )
-        value_label.pack(pady=(0, 10))
     
-    def _load_attendance_data(self):
-        """Load attendance data from database"""
-        try:
-            headers = AttendanceService.get_table_headers()
-            data = AttendanceService.get_attendance_for_table(50)  # Last 50 records
-            return headers, data
-        except Exception as e:
-            print(f"❌ Error loading attendance: {e}")
-            return ["Error"], [["Failed to load attendance data"]]
     
-    def _load_and_display_attendance_stats(self, parent):
-        """Load and display real attendance statistics"""
-        # Create stats immediately with loading text
-        self._create_stat_item(parent, "✅ Present", "Loading...", 1)
-        self._create_stat_item(parent, "⏰ Late", "Loading...", 2)
-        self._create_stat_item(parent, "❌ Absent", "Loading...", 3)
-        
-        # Store parent reference for updating
-        self.attendance_stats_parent = parent
-        
-        def load_stats():
-            try:
-                stats = AttendanceService.get_attendance_stats()
-                # Update UI in main thread
-                self.after(0, lambda: self._update_attendance_stats_display(stats))
-            except Exception as e:
-                print(f"❌ Error loading attendance stats: {e}")
-                # Show error stats
-                error_stats = {"present": "Error", "late": "Error", "absent": "Error"}
-                self.after(0, lambda: self._update_attendance_stats_display(error_stats))
-        
-        thread = threading.Thread(target=load_stats, daemon=True)
-        thread.start()
-    
-    def _update_attendance_stats_display(self, stats):
-        """Update existing attendance stats display"""
-        # Find and update existing stat widgets instead of recreating
-        if hasattr(self, 'attendance_stats_parent') and self.attendance_stats_parent.winfo_exists():
-            # Clear and recreate stats
-            children = self.attendance_stats_parent.winfo_children()
-            for widget in children[1:]:  # Skip date label
-                widget.destroy()
-            
-            self._create_stat_item(self.attendance_stats_parent, "✅ Present", str(stats.get("present", 0)), 1)
-            self._create_stat_item(self.attendance_stats_parent, "⏰ Late", str(stats.get("late", 0)), 2)
-            self._create_stat_item(self.attendance_stats_parent, "❌ Absent", str(stats.get("absent", 0)), 3)
-    
-    def _on_attendance_select(self, row_data):
-        """Handle attendance selection in table"""
-        if row_data:
-            attendance_id = row_data[0]
-            student_number = row_data[1]
-            student_name = row_data[2]
-            status = row_data[5]
-            print(f"📋 Selected attendance: {student_name} ({student_number}) - {status}")
-    
-    def _on_attendance_double_click(self, row_data):
-        """Handle attendance double click in table"""
-        if row_data:
-            attendance_id = row_data[0]
-            student_name = row_data[2]
-            print(f"✏️ Edit attendance: {student_name} (ID: {attendance_id})")
-            # TODO: Open edit attendance dialog
     
     def _start_camera(self):
         """Handle start camera button click"""
@@ -421,32 +280,39 @@ class AttendancePage(ctk.CTkFrame):
         for d in detections:
             left, top, right, bottom = d.get("left"), d.get("top"), d.get("right"), d.get("bottom")
             is_known = d.get("is_known", False)
-            name_key = d.get("name", "UNKNOWN")
+            student_info = d.get("student_info")
+            display_name = d.get("display_name", "UNKNOWN")
 
-            if is_known and name_key:
-                # Lookup extra info from DB once; cache by uppercase name
-                label_text = name_key
+            if is_known and student_info:
+                # Use the student info directly from detection
+                section = student_info.get("section") or ""
+                student_no = student_info.get("student_id") or ""
+                
+                # Create label text
+                label_text = display_name
+                if section or student_no:
+                    label_text = f"{display_name} | {student_no or section}"
+                
+                # Log attendance with cooldown (60s per student)
                 try:
-                    if name_key not in self._student_info_cache:
-                        # Try to search by name via StudentsService
-                        first_last = name_key.title().split()
-                        search_term = first_last[-1]
-                        matches = StudentsService.search_students(search_term)
-                        info = None
-                        for row in matches or []:
-                            full = f"{row.get('first_name','')} {row.get('last_name','')}".strip().upper()
-                            if full == name_key:
-                                info = row
-                                break
-                        self._student_info_cache[name_key] = info
-                    info = self._student_info_cache.get(name_key)
-                    if info:
-                        section = info.get("section") or ""
-                        student_no = info.get("student_number") or ""
-                        if section or student_no:
-                            label_text = f"{name_key} | {student_no or section}"
+                    student_pk = student_info.get("id")
+                    if student_pk:
+                        now = time.time()
+                        last = self._last_logged_at_by_student_id.get(student_pk, 0)
+                        if now - last > 60:  # 60 second cooldown
+                            if AttendanceService.create_today_once(student_pk, "present"):
+                                self._last_logged_at_by_student_id[student_pk] = now
+                                print(f"✅ Logged attendance for {display_name} (ID: {student_pk})")
+                                
+                                # No need to refresh table or stats since we removed them
+                        
+                        # Push a one-time UI card for this student in this session
+                        if student_pk and student_pk not in self._detected_card_ids:
+                            self._detected_card_ids.add(student_pk)
+                            self.after(0, lambda info=student_info: self._push_detected_card(info))
+                            
                 except Exception as e:
-                    print(f"⚠️ Student info lookup failed for {name_key}: {e}")
+                    print(f"⚠️ Attendance log failed for {display_name}: {e}")
 
                 color = (0, 200, 0)
                 cv2.rectangle(annotated, (left, top), (right, bottom), color, 2)
@@ -465,19 +331,69 @@ class AttendancePage(ctk.CTkFrame):
         # project root is three levels up from app/ui/pages
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.abspath(os.path.join(current_dir, "..", "..", ".."))
-        default_dir = os.path.join(project_root, "Images", "Students")
+        default_dir = os.path.join(project_root, "app", "data", "images", "students")
+        os.makedirs(default_dir, exist_ok=True)
         return default_dir
+
+    def _push_detected_card(self, student_info: dict):
+        """Create and display a compact card for a newly detected student once per session."""
+        try:
+            if not hasattr(self, 'detected_cards_frame') or not self.detected_cards_frame.winfo_exists():
+                return
+
+            full_name = f"{student_info.get('first_name','')} {student_info.get('last_name','')}".strip()
+            student_no = student_info.get('student_id', '')
+            section = student_info.get('section', '') or 'N/A'
+            timestamp = datetime.now().strftime("%H:%M:%S")
+
+            card = ctk.CTkFrame(self.detected_cards_frame, corner_radius=10)
+            card.pack(fill='x', padx=10, pady=6)
+
+            # Left: initials circle
+            left = ctk.CTkFrame(card, width=48, height=48, corner_radius=24)
+            left.grid(row=0, column=0, padx=10, pady=10)
+            left.grid_propagate(False)
+            initials = ''.join([p[0] for p in full_name.split() if p])[:2].upper() or '?'
+            initials_lbl = ctk.CTkLabel(left, text=initials, font=ctk.CTkFont(size=16, weight='bold'))
+            initials_lbl.place(relx=0.5, rely=0.5, anchor='center')
+
+            # Middle: name + meta
+            mid = ctk.CTkFrame(card, fg_color='transparent')
+            mid.grid(row=0, column=1, sticky='w', padx=5, pady=10)
+            name_lbl = ctk.CTkLabel(mid, text=full_name or 'UNKNOWN', font=ctk.CTkFont(size=14, weight='bold'))
+            name_lbl.pack(anchor='w')
+            meta_lbl = ctk.CTkLabel(mid, text=f"{student_no} • {section} • {timestamp}", font=ctk.CTkFont(size=12), text_color=("gray60","gray40"))
+            meta_lbl.pack(anchor='w')
+
+            # Right: status
+            status_lbl = ctk.CTkLabel(card, text='✅ Present', font=ctk.CTkFont(size=12, weight='bold'), text_color='#10b981')
+            status_lbl.grid(row=0, column=2, padx=10)
+
+            # Layout
+            card.grid_columnconfigure(1, weight=1)
+            
+            # Add a subtle animation effect
+            card.configure(fg_color=("gray90", "gray20"))
+            self.after(100, lambda: card.configure(fg_color=("gray85", "gray25")))
+            
+        except Exception as e:
+            print(f"⚠️ Failed to push detected card: {e}")
 
     def _init_recognition_engine(self):
         """Initialize FaceRecognitionEngine by loading encodings if folder exists."""
         try:
             if os.path.isdir(self._students_dir):
-                engine = FaceRecognitionEngine(match_threshold=0.50, process_every_n_frames=3)
+                # Use performance configuration
+                performance_mode = PerformanceConfig.get_current_mode()
+                engine = FaceRecognitionEngine(performance_mode=performance_mode)
                 # Load encodings lazily on demand to avoid blocking UI thread
                 def _load():
                     try:
                         engine.update_known_from_directory(self._students_dir)
-                        print(f"✅ Loaded {len(engine.known_encodings)} encodings from {self._students_dir}")
+                        print(f"✅ Loaded {len(engine.known_encodings)} face encodings for {len(engine.known_student_info)} students from {self._students_dir}")
+                        for student in engine.known_student_info:
+                            if student.get('id'):
+                                print(f"   - {student.get('first_name', '')} {student.get('last_name', '')} (ID: {student.get('id')})")
                         self._fr_engine = engine
                     except Exception as e:
                         print(f"⚠️ Failed to load encodings: {e}")

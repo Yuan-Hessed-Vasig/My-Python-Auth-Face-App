@@ -15,7 +15,7 @@ class UserSeeder:
             user_count = cursor.fetchone()[0]
             
             if user_count > 0:
-                print("👥 Users already exist, skipping seeding...")
+                print("Users already exist, skipping seeding...")
                 return
             
             # Default users data
@@ -49,13 +49,13 @@ class UserSeeder:
                     "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
                     (user['username'], password_hash, user['role'])
                 )
-                print(f"👤 Created user: {user['username']} ({user['role']})")
+                print(f"Created user: {user['username']} ({user['role']})")
             
             conn.commit()
-            print("✅ User seeding completed!")
+            print("User seeding completed!")
             
         except Exception as e:
-            print(f"❌ User seeding error: {e}")
+            print(f"User seeding error: {e}")
             conn.rollback()
             raise
         finally:

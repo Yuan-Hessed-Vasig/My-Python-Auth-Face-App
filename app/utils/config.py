@@ -5,3 +5,4 @@ DB_HOST = "localhost"
 DB_USER = "root"
 DB_PASSWORD = ""
 DB_NAME = "school_face_attendance"
+DB_PORT = 3366

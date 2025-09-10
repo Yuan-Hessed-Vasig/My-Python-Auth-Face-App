@@ -6,7 +6,7 @@ Now with pagination support!
 
 import mysql.connector
 from typing import List, Dict, Any, Optional, Tuple
-from app.utils.config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+from app.utils.config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
 from app.services.pagination import PaginationParams, PaginationResult, PaginationService
 import logging
 
@@ -25,6 +25,7 @@ class DataService:
                 user=DB_USER,
                 password=DB_PASSWORD,
                 database=DB_NAME,
+                port=DB_PORT,
                 autocommit=True
             )
         except mysql.connector.Error as e:

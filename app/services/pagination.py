@@ -204,15 +204,15 @@ class PaginationService:
 PAGINATION_DEFAULTS = {
     "students": {
         "limit": 25,
-        "sort_by": "student_number",
+        "sort_by": "student_id",
         "sort_order": "ASC",
-        "search_columns": ["first_name", "last_name", "student_number", "section"]
+        "search_columns": ["first_name", "last_name", "student_id", "section"]
     },
     "attendance": {
         "limit": 50,
         "sort_by": "check_in_time",
         "sort_order": "DESC",
-        "search_columns": ["student_number", "first_name", "last_name"]
+        "search_columns": ["student_id", "first_name", "last_name"]
     },
     "users": {
         "limit": 20,

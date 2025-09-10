@@ -21,23 +21,23 @@ def main():
 
     try:
         if command == "migrate":
-            print("🚀 Running database migration...")
+            print("Running database migration...")
             DatabaseService.migrate()
 
         elif command == "seed":
-            print("🌱 Running database seeders...")
+            print("Running database seeders...")
             DatabaseService.seed()
 
         elif command == "fresh":
-            print("✨ Running fresh migration with seeders...")
+            print("Running fresh migration with seeders...")
             DatabaseService.fresh()
 
         else:
-            print(f"❌ Unknown command: {command}")
+            print(f"Unknown command: {command}")
             print(__doc__)
 
     except Exception as e:
-        print(f"💥 Migration failed: {e}")
+        print(f"Migration failed: {e}")
         sys.exit(1)
 
 

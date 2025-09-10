@@ -30,7 +30,7 @@ def main():
         students = StudentsService.get_all_students()
         print(f"   ✅ Found {len(students)} students")
         if students:
-            print(f"   📋 First student: {students[0].get('student_number')} - {students[0].get('first_name')} {students[0].get('last_name')}")
+            print(f"   📋 First student: {students[0].get('student_id')} - {students[0].get('first_name')} {students[0].get('last_name')}")
     except Exception as e:
         print(f"   ❌ Students service error: {e}")
     
@@ -44,7 +44,7 @@ def main():
         attendance = AttendanceService.get_all_attendance(5)
         print(f"   ✅ Found {len(attendance)} recent attendance records")
         if attendance:
-            print(f"   📋 Latest attendance: {attendance[0].get('student_number')} - {attendance[0].get('status')}")
+            print(f"   📋 Latest attendance: {attendance[0].get('student_id')} - {attendance[0].get('status')}")
     except Exception as e:
         print(f"   ❌ Attendance service error: {e}")
     

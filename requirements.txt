@@ -7,3 +7,5 @@ bcrypt
 watchdog
 tksheet
 face-recognition
+psutil
+numpy

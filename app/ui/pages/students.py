@@ -14,7 +14,7 @@ class StudentsPage(ctk.CTkFrame):
         self.current_pagination_params = PaginationService.create_params(
             page=1,
             limit=25,
-            sort_by="student_number",
+            sort_by="student_id",
             sort_order="ASC"
         )
         self.current_pagination_result = None
@@ -247,9 +247,9 @@ class StudentsPage(ctk.CTkFrame):
         """Handle student selection in table"""
         if row_data:
             student_id = row_data[0]
-            student_number = row_data[1]
+            student_id = row_data[1]
             student_name = row_data[2]
-            print(f"📋 Selected student: {student_name} ({student_number})")
+            print(f"📋 Selected student: {student_name} ({student_id})")
     
     def _on_student_double_click(self, row_data):
         """Handle student double click in table"""

@@ -7,12 +7,13 @@ Now with pagination support!
 from typing import List, Dict, Optional
 from app.services.data_service import DataService
 from app.services.pagination import PaginationParams, PaginationResult, PaginationService, get_pagination_defaults
+from app.services.image_service import list_student_images, save_student_image_from_bytes, delete_student_image
 
 class StudentsService:
     """Service class for student-related database operations"""
     
     @staticmethod
-    def get_all_students(order_by: str = "student_number") -> List[Dict]:
+    def get_all_students(order_by: str = "student_id") -> List[Dict]:
         """Get all students ordered by student number"""
         return DataService.get_all("students", order_by)
     
@@ -22,20 +23,20 @@ class StudentsService:
         return DataService.get_by_id("students", student_id)
     
     @staticmethod
-    def get_student_by_number(student_number: str) -> Optional[Dict]:
+    def get_student_by_number(student_id: str) -> Optional[Dict]:
         """Get student by student number"""
-        return DataService.get_by_id("students", student_number, "student_number")
+        return DataService.get_by_id("students", student_id, "student_id")
     
     @staticmethod
     def search_students(search_term: str) -> List[Dict]:
         """Search students by name, student number, or section"""
-        search_columns = ["first_name", "last_name", "student_number", "section"]
+        search_columns = ["first_name", "last_name", "student_id", "section"]
         return DataService.search("students", search_term, search_columns)
     
     @staticmethod
     def create_student(student_data: Dict) -> bool:
         """Create new student"""
-        required_fields = ["student_number", "first_name", "last_name"]
+        required_fields = ["student_id", "first_name", "last_name"]
         
         # Validate required fields
         for field in required_fields:
@@ -92,7 +93,7 @@ class StudentsService:
         for student in students:
             row = [
                 student.get("id", ""),
-                student.get("student_number", ""),
+                student.get("student_id", ""),
                 f"{student.get('first_name', '')} {student.get('last_name', '')}".strip(),
                 student.get("section", ""),
                 student.get("created_at", "").strftime("%Y-%m-%d") if student.get("created_at") else ""
@@ -124,10 +125,10 @@ class StudentsService:
             pagination_params = PaginationService.create_params(**defaults)
         
         # Define searchable columns
-        search_columns = ["first_name", "last_name", "student_number", "section"]
+        search_columns = ["first_name", "last_name", "student_id", "section"]
         
         # Define allowed sort columns
-        allowed_sort_columns = ["id", "student_number", "first_name", "last_name", "section", "created_at"]
+        allowed_sort_columns = ["id", "student_id", "first_name", "last_name", "section", "created_at"]
         
         # Use DataService pagination
         return DataService.get_paginated(
@@ -152,7 +153,7 @@ class StudentsService:
         for student in result.data:
             row = [
                 student.get("id", ""),
-                student.get("student_number", ""),
+                student.get("student_id", ""),
                 f"{student.get('first_name', '')} {student.get('last_name', '')}".strip(),
                 student.get("section", ""),
                 student.get("created_at", "").strftime("%Y-%m-%d") if student.get("created_at") else ""
@@ -208,6 +209,23 @@ class StudentsService:
         pagination_params.filters = {"section": section}
         
         return StudentsService.get_students_paginated(pagination_params)
+
+    # ========== IMAGE MANAGEMENT HELPERS ==========
+    
+    @staticmethod
+    def get_student_images(student_number: str) -> List[str]:
+        """Return list of image file paths for a student (by student_number)."""
+        return list_student_images(student_number)
+    
+    @staticmethod
+    def add_student_image_from_bytes(student_number: str, image_bytes: bytes) -> Optional[str]:
+        """Save an image for student (by student_number) from raw bytes."""
+        return save_student_image_from_bytes(student_number, image_bytes)
+    
+    @staticmethod
+    def remove_student_image(student_number: str, file_name: str) -> bool:
+        """Delete a specific image file for a student (by student_number)."""
+        return delete_student_image(student_number, file_name)
 
 # Convenience functions for easy access
 def get_all_students():

@@ -16,10 +16,10 @@ class AttendanceService:
         query = """
             SELECT 
                 a.id,
-                a.student_id,
+                a.student_id AS student_pk,
                 a.timestamp,
                 a.status,
-                s.student_number,
+                s.student_id AS student_no,
                 s.first_name,
                 s.last_name,
                 s.section
@@ -37,10 +37,10 @@ class AttendanceService:
         query = """
             SELECT 
                 a.id,
-                a.student_id,
+                a.student_id AS student_pk,
                 a.timestamp,
                 a.status,
-                s.student_number,
+                s.student_id AS student_no,
                 s.first_name,
                 s.last_name,
                 s.section
@@ -59,7 +59,7 @@ class AttendanceService:
                 a.id,
                 a.timestamp,
                 a.status,
-                s.student_number,
+                s.student_id AS student_no,
                 s.first_name,
                 s.last_name
             FROM attendance a
@@ -79,6 +79,27 @@ class AttendanceService:
             "timestamp": datetime.now()
         }
         return DataService.create("attendance", attendance_data)
+
+    @staticmethod
+    def create_today_once(student_id: int, status: str = "present") -> bool:
+        """
+        Create attendance for today only once per student.
+        Returns True if a new record was created, False if already exists or on error.
+        """
+        try:
+            today = date.today()
+            # Check existing record for today
+            check_query = """
+                SELECT id FROM attendance
+                WHERE student_id = %s AND DATE(timestamp) = %s
+                LIMIT 1
+            """
+            exists = DataService.execute_query(check_query, (student_id, today))
+            if exists:
+                return False
+            return AttendanceService.create_attendance(student_id, status)
+        except Exception:
+            return False
     
     @staticmethod
     def update_attendance(attendance_id: int, status: str) -> bool:
@@ -142,7 +163,7 @@ class AttendanceService:
             
             row = [
                 record.get("id", ""),
-                record.get("student_number", ""),
+                record.get("student_no", ""),
                 f"{record.get('first_name', '')} {record.get('last_name', '')}".strip(),
                 record.get("section", ""),
                 formatted_time,
@@ -163,10 +184,10 @@ class AttendanceService:
         query = """
             SELECT 
                 a.id,
-                a.student_id,
+                a.student_id AS student_pk,
                 a.timestamp,
                 a.status,
-                s.student_number,
+                s.student_id AS student_no,
                 s.first_name,
                 s.last_name,
                 s.section
@@ -174,7 +195,7 @@ class AttendanceService:
             JOIN students s ON a.student_id = s.id
             WHERE s.first_name LIKE %s 
                OR s.last_name LIKE %s 
-               OR s.student_number LIKE %s
+               OR s.student_id LIKE %s
             ORDER BY a.timestamp DESC
             LIMIT %s
         """
@@ -187,10 +208,10 @@ class AttendanceService:
         query = """
             SELECT 
                 a.id,
-                a.student_id,
+                a.student_id AS student_pk,
                 a.timestamp,
                 a.status,
-                s.student_number,
+                s.student_id AS student_no,
                 s.first_name,
                 s.last_name,
                 s.section

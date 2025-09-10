@@ -1,6 +1,6 @@
 import mysql.connector
 import os
-from app.utils.config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+from app.utils.config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
 
 
 class DatabaseService:
@@ -12,13 +12,15 @@ class DatabaseService:
                 host=DB_HOST, 
                 user=DB_USER, 
                 password=DB_PASSWORD, 
-                database=DB_NAME
+                database=DB_NAME,
+                port=DB_PORT
             )
         else:
             return mysql.connector.connect(
                 host=DB_HOST, 
                 user=DB_USER, 
-                password=DB_PASSWORD
+                password=DB_PASSWORD,
+                port=DB_PORT
             )
     
     @staticmethod
@@ -44,10 +46,10 @@ class DatabaseService:
                         cursor.execute(statement)
                         conn.commit()
             
-            print(f"✅ Successfully executed SQL file: {file_path}")
+            print(f"Successfully executed SQL file: {file_path}")
             
         except Exception as e:
-            print(f"❌ Error executing SQL file: {e}")
+            print(f"Error executing SQL file: {e}")
             conn.rollback()
             raise
         finally:
@@ -57,29 +59,33 @@ class DatabaseService:
     @staticmethod
     def migrate():
         """Run database migrations"""
-        sql_file = "db/school_face_attendance.sql"
+        sql_file = "db/schema.sql"
         DatabaseService.execute_sql_file(sql_file)
-        print("🚀 Database migration completed!")
+        print("Database migration completed!")
     
     @staticmethod
     def seed():
         """Run database seeders"""
         # Import and run seeders here
-        from app.database.seeders.user_seeder import UserSeeder
-        
+        try:
+            from app.database.seeders.user_seeder import UserSeeder
+        except Exception as import_error:
+            print(f"Seeding skipped: dependency not available ({import_error})")
+            return
+
         try:
             UserSeeder.run()
-            print("🌱 Database seeding completed!")
+            print("Database seeding completed!")
         except Exception as e:
-            print(f"❌ Seeding error: {e}")
+            print(f"Seeding error: {e}")
     
     @staticmethod
     def fresh():
         """Drop and recreate database with fresh data"""
-        print("🔄 Running fresh migration...")
+        print("Running fresh migration...")
         DatabaseService.migrate()
         DatabaseService.seed()
-        print("✨ Fresh database setup completed!")
+        print("Fresh database setup completed!")
 
 
 # Legacy functions for backward compatibility
