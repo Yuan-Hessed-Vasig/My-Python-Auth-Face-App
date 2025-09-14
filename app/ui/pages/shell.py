@@ -1,10 +1,11 @@
 import customtkinter as ctk
 from app.ui.components.navbar import Navbar
 from app.ui.components.sidebar import Sidebar
+from app.ui.app import LUSH_FOREST_COLORS
 
 class Shell(ctk.CTkFrame):
     def __init__(self, master, on_nav_change):
-        super().__init__(master, corner_radius=15)
+        super().__init__(master, corner_radius=15, fg_color=LUSH_FOREST_COLORS["light"])
         self.pack(fill="both", expand=True)
         self.on_nav_change = on_nav_change
 
@@ -13,7 +14,7 @@ class Shell(ctk.CTkFrame):
         self.navbar.pack(pady=10)
         
         # Body container
-        self.body = ctk.CTkFrame(self, fg_color="transparent")
+        self.body = ctk.CTkFrame(self, fg_color=LUSH_FOREST_COLORS["light"])
         self.body.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         # Sidebar
@@ -21,8 +22,31 @@ class Shell(ctk.CTkFrame):
         self.sidebar.pack(side="left", fill="y", padx=(0, 10))
 
         # Content area
-        self.content = ctk.CTkFrame(self.body, corner_radius=10)
+        self.content = ctk.CTkFrame(self.body, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
         self.content.pack(side="left", fill="both", expand=True)
+        
+        # Try to style the main scrollbar
+        try:
+            from tkinter import ttk
+            style = ttk.Style()
+            style.configure("Forest.Vertical.TScrollbar",
+                background=LUSH_FOREST_COLORS["primary"],  # Darker green
+                troughcolor=LUSH_FOREST_COLORS["secondary"],  # Medium green trough
+                borderwidth=0,
+                arrowcolor="white",
+                darkcolor=LUSH_FOREST_COLORS["primary"],
+                lightcolor=LUSH_FOREST_COLORS["primary"]
+            )
+            style.configure("Forest.Horizontal.TScrollbar",
+                background=LUSH_FOREST_COLORS["primary"],  # Darker green
+                troughcolor=LUSH_FOREST_COLORS["secondary"],  # Medium green trough
+                borderwidth=0,
+                arrowcolor="white",
+                darkcolor=LUSH_FOREST_COLORS["primary"],
+                lightcolor=LUSH_FOREST_COLORS["primary"]
+            )
+        except Exception as e:
+            print(f"⚠️ Could not style scrollbars: {e}")
         
         # Store created pages (ChatGPT approach!)
         self.pages = {}
@@ -67,7 +91,7 @@ class Shell(ctk.CTkFrame):
                 self.content, 
                 text=f"⚠️ Error loading page content\n\nError: {error_msg}\n\nPlease try navigating again",
                 font=ctk.CTkFont(size=14),
-                text_color=("gray60", "gray40"),
+                text_color=LUSH_FOREST_COLORS["text_medium"],
                 justify="center"
             )
             fallback.pack(fill="both", expand=True, padx=20, pady=20)

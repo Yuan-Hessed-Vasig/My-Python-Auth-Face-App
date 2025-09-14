@@ -4,11 +4,12 @@ from app.ui.widget.gradient_button import GradientButton
 from app.ui.widget.data_table import DataTable
 from app.services.students_service import StudentsService
 from app.services.pagination import PaginationParams, PaginationService
+from app.ui.app import LUSH_FOREST_COLORS
 import threading
 
 class StudentsPage(ctk.CTkFrame):
     def __init__(self, master):
-        super().__init__(master, fg_color="transparent")
+        super().__init__(master, fg_color=LUSH_FOREST_COLORS["light"])
         
         # Pagination state
         self.current_pagination_params = PaginationService.create_params(
@@ -26,12 +27,15 @@ class StudentsPage(ctk.CTkFrame):
             self._build_fallback()
     
     def _build(self):
+        # Apply lush forest background
+        self.configure(fg_color=LUSH_FOREST_COLORS["light"])
+        
         # Main container
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         
         # Header section
-        header_frame = ctk.CTkFrame(self, corner_radius=15)
+        header_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="white")
         header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
         header_frame.grid_columnconfigure(1, weight=1)
         
@@ -39,7 +43,8 @@ class StudentsPage(ctk.CTkFrame):
         title_label = ctk.CTkLabel(
             header_frame,
             text="👥 Students Management",
-            font=ctk.CTkFont(size=32, weight="bold")
+            font=ctk.CTkFont(size=32, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         title_label.grid(row=0, column=0, sticky="w", padx=30, pady=20)
         
@@ -66,24 +71,25 @@ class StudentsPage(ctk.CTkFrame):
             add_btn.grid(row=0, column=1, sticky="e", padx=30, pady=20)
         
         # Main content area
-        content_frame = ctk.CTkFrame(self, corner_radius=15)
+        content_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="white")
         content_frame.grid(row=1, column=0, sticky="nsew")
         content_frame.grid_columnconfigure(0, weight=1)
         content_frame.grid_rowconfigure(1, weight=1)
         
         # Search and actions section (flex row style)
-        search_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        search_frame = ctk.CTkFrame(content_frame, fg_color="white")
         search_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
         search_frame.grid_columnconfigure(1, weight=1)  # Search entry expands
         
         # Left side - Search
-        search_container = ctk.CTkFrame(search_frame, fg_color="transparent")
+        search_container = ctk.CTkFrame(search_frame, fg_color="white")
         search_container.grid(row=0, column=0, sticky="w")
         
         search_label = ctk.CTkLabel(
             search_container,
             text="🔍",
-            font=ctk.CTkFont(size=16)
+            font=ctk.CTkFont(size=16),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         search_label.pack(side="left", padx=(0, 5))
         
@@ -93,12 +99,15 @@ class StudentsPage(ctk.CTkFrame):
             placeholder_text="Search students...",
             height=40,
             width=300,
-            font=ctk.CTkFont(size=14)
+            font=ctk.CTkFont(size=14),
+            border_color=LUSH_FOREST_COLORS["secondary"],
+            fg_color=LUSH_FOREST_COLORS["light"],
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         self.search_entry.grid(row=0, column=1, sticky="ew", padx=(10, 10), pady=5)
         
         # Right side - Action buttons
-        actions_frame = ctk.CTkFrame(search_frame, fg_color="transparent")
+        actions_frame = ctk.CTkFrame(search_frame, fg_color="white")
         actions_frame.grid(row=0, column=2, sticky="e")
         
         # Add student button
@@ -133,13 +142,14 @@ class StudentsPage(ctk.CTkFrame):
             height=40,
             corner_radius=20,
             font=ctk.CTkFont(size=12),
-            fg_color="#8b5cf6",
-            hover_color="#7c3aed"
+            fg_color=LUSH_FOREST_COLORS["secondary"],
+            hover_color=LUSH_FOREST_COLORS["accent"],
+            text_color="white"
         )
         refresh_btn.pack(side="left")
         
         # Table section with real data
-        table_frame = ctk.CTkFrame(content_frame, corner_radius=10)
+        table_frame = ctk.CTkFrame(content_frame, corner_radius=10, fg_color=LUSH_FOREST_COLORS["secondary"])
         table_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         table_frame.grid_columnconfigure(0, weight=1)
         table_frame.grid_rowconfigure(0, weight=1)
@@ -170,7 +180,7 @@ class StudentsPage(ctk.CTkFrame):
         self.search_entry.bind('<KeyRelease>', self._on_search_change)
         
         # Quick stats
-        stats_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        stats_frame = ctk.CTkFrame(content_frame, fg_color="white")
         stats_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 20))
         stats_frame.grid_columnconfigure((0, 1, 2), weight=1)
         
@@ -179,13 +189,14 @@ class StudentsPage(ctk.CTkFrame):
     
     def _create_quick_stat(self, parent, title, value, col):
         """Create a quick stat widget"""
-        stat_frame = ctk.CTkFrame(parent, corner_radius=10)
+        stat_frame = ctk.CTkFrame(parent, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
         stat_frame.grid(row=0, column=col, sticky="ew", padx=10)
         
         title_label = ctk.CTkLabel(
             stat_frame,
             text=title,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         title_label.pack(pady=(15, 5))
         
@@ -193,7 +204,7 @@ class StudentsPage(ctk.CTkFrame):
             stat_frame,
             text=value,
             font=ctk.CTkFont(size=24, weight="bold"),
-            text_color=("#1f538d", "#4a9eff")
+            text_color=LUSH_FOREST_COLORS["primary"]
         )
         value_label.pack(pady=(0, 15))
     
@@ -287,8 +298,8 @@ class StudentsPage(ctk.CTkFrame):
                 # Add Actions column to each row
                 enhanced_data = []
                 for row in table_data:
-                    # Add action buttons as the last column
-                    enhanced_row = list(row) + ["✏️ 🗑️"]  # Edit and Delete icons
+                    # Add action buttons as the last column with forest-themed styling
+                    enhanced_row = list(row) + ["👁️ ✏️"]  # View and Edit icons (removed delete for safety)
                     enhanced_data.append(enhanced_row)
                 
                 # Store pagination result
@@ -392,7 +403,7 @@ class StudentsPage(ctk.CTkFrame):
                 self,
                 text="⚠️ Students Page Error\n\nUnable to load students page properly.\nPlease check your database connection.",
                 font=ctk.CTkFont(size=16),
-                text_color=("gray60", "gray40"),
+                text_color=LUSH_FOREST_COLORS["text_medium"],
                 justify="center"
             )
             error_label.pack(expand=True, fill="both", padx=50, pady=50)

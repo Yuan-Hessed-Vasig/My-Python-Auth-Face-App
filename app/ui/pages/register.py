@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from app.services.auth_service import register_user
 from app.ui.widget.gradient_button import GradientButton
+from app.ui.app import LUSH_FOREST_COLORS
 
 class RegisterPage(ctk.CTkFrame):
     def __init__(self, master, on_success, on_back):
@@ -11,12 +12,15 @@ class RegisterPage(ctk.CTkFrame):
         self._build()
 
     def _build(self):
+        # Apply lush forest background
+        self.configure(fg_color=LUSH_FOREST_COLORS["light"])
+        
         # Main container with padding
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
         
         # Center container
-        center_frame = ctk.CTkFrame(self, corner_radius=20)
+        center_frame = ctk.CTkFrame(self, corner_radius=20, fg_color="white")
         center_frame.grid(row=0, column=0, padx=50, pady=50, sticky="nsew")
         center_frame.grid_columnconfigure(0, weight=1)
         
@@ -24,7 +28,8 @@ class RegisterPage(ctk.CTkFrame):
         title_label = ctk.CTkLabel(
             center_frame, 
             text="🎓 Create Account", 
-            font=ctk.CTkFont(size=28, weight="bold")
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         title_label.grid(row=0, column=0, pady=(40, 10), sticky="ew")
         
@@ -33,12 +38,12 @@ class RegisterPage(ctk.CTkFrame):
             center_frame, 
             text="Join the School Face Attendance System", 
             font=ctk.CTkFont(size=14),
-            text_color=("gray60", "gray40")
+            text_color=LUSH_FOREST_COLORS["text_medium"]
         )
         subtitle_label.grid(row=1, column=0, pady=(0, 30), sticky="ew")
         
         # Form container
-        form_frame = ctk.CTkFrame(center_frame, fg_color="transparent")
+        form_frame = ctk.CTkFrame(center_frame, fg_color="white")
         form_frame.grid(row=2, column=0, padx=40, pady=20, sticky="ew")
         form_frame.grid_columnconfigure(0, weight=1)
         
@@ -47,7 +52,8 @@ class RegisterPage(ctk.CTkFrame):
             form_frame, 
             text="👤 Username", 
             font=ctk.CTkFont(size=14, weight="bold"),
-            anchor="w"
+            anchor="w",
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         username_label.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         
@@ -55,7 +61,10 @@ class RegisterPage(ctk.CTkFrame):
             form_frame, 
             placeholder_text="Enter your username",
             height=45,
-            font=ctk.CTkFont(size=14)
+            font=ctk.CTkFont(size=14),
+            border_color=LUSH_FOREST_COLORS["secondary"],
+            fg_color=LUSH_FOREST_COLORS["light"],
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         self.username.grid(row=1, column=0, sticky="ew", pady=(0, 20))
         
@@ -64,7 +73,8 @@ class RegisterPage(ctk.CTkFrame):
             form_frame, 
             text="🔒 Password", 
             font=ctk.CTkFont(size=14, weight="bold"),
-            anchor="w"
+            anchor="w",
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         password_label.grid(row=2, column=0, sticky="ew", pady=(0, 5))
         
@@ -73,7 +83,10 @@ class RegisterPage(ctk.CTkFrame):
             placeholder_text="Enter your password",
             show="*",
             height=45,
-            font=ctk.CTkFont(size=14)
+            font=ctk.CTkFont(size=14),
+            border_color=LUSH_FOREST_COLORS["secondary"],
+            fg_color=LUSH_FOREST_COLORS["light"],
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         self.password.grid(row=3, column=0, sticky="ew", pady=(0, 20))
         
@@ -82,7 +95,8 @@ class RegisterPage(ctk.CTkFrame):
             form_frame, 
             text="🔐 Confirm Password", 
             font=ctk.CTkFont(size=14, weight="bold"),
-            anchor="w"
+            anchor="w",
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         confirm_label.grid(row=4, column=0, sticky="ew", pady=(0, 5))
         
@@ -91,12 +105,15 @@ class RegisterPage(ctk.CTkFrame):
             placeholder_text="Confirm your password",
             show="*",
             height=45,
-            font=ctk.CTkFont(size=14)
+            font=ctk.CTkFont(size=14),
+            border_color=LUSH_FOREST_COLORS["secondary"],
+            fg_color=LUSH_FOREST_COLORS["light"],
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         self.confirm_password.grid(row=5, column=0, sticky="ew", pady=(0, 30))
         
         # Buttons container
-        button_frame = ctk.CTkFrame(center_frame, fg_color="transparent")
+        button_frame = ctk.CTkFrame(center_frame, fg_color="white")
         button_frame.grid(row=3, column=0, padx=40, pady=(0, 40), sticky="ew")
         button_frame.grid_columnconfigure((0, 1), weight=1)
         
@@ -107,9 +124,9 @@ class RegisterPage(ctk.CTkFrame):
             command=self.on_back,
             height=45,
             font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color="transparent",
-            border_width=2,
-            text_color=("gray10", "gray90")
+            fg_color=LUSH_FOREST_COLORS["secondary"],
+            hover_color=LUSH_FOREST_COLORS["accent"],
+            text_color="white"
         )
         back_btn.grid(row=0, column=0, padx=(0, 10), sticky="ew")
         

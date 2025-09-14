@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import tkinter as tk
 from typing import Union, Tuple, Optional, Callable
+from app.ui.app import LUSH_FOREST_COLORS
 
 
 class GradientButton(ctk.CTkFrame):
@@ -16,8 +17,8 @@ class GradientButton(ctk.CTkFrame):
         command: Optional[Callable] = None,
         width: int = 160,
         height: int = 40,
-        start_color: str = "#3b82f6",
-        end_color: str = "#1d4ed8",
+        start_color: str = LUSH_FOREST_COLORS["primary"],
+        end_color: str = LUSH_FOREST_COLORS["accent"],
         text_color: str = "white",
         hover_start_color: Optional[str] = None,
         hover_end_color: Optional[str] = None,

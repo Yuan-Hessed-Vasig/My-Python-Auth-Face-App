@@ -14,6 +14,7 @@ except ImportError:
 from typing import List, Dict, Callable, Optional
 import threading
 from app.services.pagination import PaginationParams, PaginationResult
+from app.ui.app import LUSH_FOREST_COLORS
 
 class DataTable(ctk.CTkFrame):
     """
@@ -43,6 +44,9 @@ class DataTable(ctk.CTkFrame):
         on_page_change: Optional[Callable] = None,
         **kwargs
     ):
+        # Set default background to darker green if not specified
+        if 'fg_color' not in kwargs:
+            kwargs['fg_color'] = LUSH_FOREST_COLORS["secondary"]
         super().__init__(master, **kwargs)
         
         self.headers = headers or []
@@ -85,8 +89,8 @@ class DataTable(ctk.CTkFrame):
         # Table row expands
         self.grid_rowconfigure(current_row, weight=1)
         
-        # Create table container
-        self.table_frame = ctk.CTkFrame(self)
+        # Create table container with darker green background
+        self.table_frame = ctk.CTkFrame(self, fg_color=LUSH_FOREST_COLORS["secondary"])
         self.table_frame.grid(row=current_row, column=0, sticky="nsew", padx=5, pady=5)
         current_row += 1
         
@@ -155,8 +159,9 @@ class DataTable(ctk.CTkFrame):
                 width=90,
                 height=32,
                 font=ctk.CTkFont(size=12),
-                fg_color="#8b5cf6",
-                hover_color="#7c3aed"
+                fg_color=LUSH_FOREST_COLORS["secondary"],
+                hover_color=LUSH_FOREST_COLORS["accent"],
+                text_color="white"
             )
             refresh_btn.pack(side="left", padx=2)
         
@@ -207,7 +212,7 @@ class DataTable(ctk.CTkFrame):
             page_info_frame,
             text=self.pagination_result.get_page_info(),
             font=ctk.CTkFont(size=11),
-            text_color=("gray60", "gray40")
+            text_color=LUSH_FOREST_COLORS["text_medium"]
         )
         page_info_label.pack(side="left", padx=5)
         
@@ -223,7 +228,10 @@ class DataTable(ctk.CTkFrame):
                 command=lambda: self._change_page(1),
                 width=30,
                 height=30,
-                font=ctk.CTkFont(size=12)
+                font=ctk.CTkFont(size=12),
+                fg_color=LUSH_FOREST_COLORS["secondary"],
+                hover_color=LUSH_FOREST_COLORS["accent"],
+                text_color="white"
             )
             first_btn.pack(side="left", padx=1)
         
@@ -235,7 +243,10 @@ class DataTable(ctk.CTkFrame):
                 command=lambda: self._change_page(self.pagination_result.page - 1),
                 width=30,
                 height=30,
-                font=ctk.CTkFont(size=12)
+                font=ctk.CTkFont(size=12),
+                fg_color=LUSH_FOREST_COLORS["secondary"],
+                hover_color=LUSH_FOREST_COLORS["accent"],
+                text_color="white"
             )
             prev_btn.pack(side="left", padx=1)
         
@@ -251,8 +262,9 @@ class DataTable(ctk.CTkFrame):
                     width=35,
                     height=30,
                     font=ctk.CTkFont(size=12, weight="bold"),
-                    fg_color="#1f538d",
-                    hover_color="#4a9eff"
+                    fg_color=LUSH_FOREST_COLORS["primary"],
+                    hover_color=LUSH_FOREST_COLORS["accent"],
+                    text_color="white"
                 )
             else:
                 # Other pages
@@ -264,8 +276,8 @@ class DataTable(ctk.CTkFrame):
                     height=30,
                     font=ctk.CTkFont(size=12),
                     fg_color="transparent",
-                    text_color=("gray60", "gray40"),
-                    hover_color=("gray80", "gray20")
+                    text_color=LUSH_FOREST_COLORS["text_medium"],
+                    hover_color=LUSH_FOREST_COLORS["light"]
                 )
             page_btn.pack(side="left", padx=1)
         
@@ -277,7 +289,10 @@ class DataTable(ctk.CTkFrame):
                 command=lambda: self._change_page(self.pagination_result.page + 1),
                 width=30,
                 height=30,
-                font=ctk.CTkFont(size=12)
+                font=ctk.CTkFont(size=12),
+                fg_color=LUSH_FOREST_COLORS["secondary"],
+                hover_color=LUSH_FOREST_COLORS["accent"],
+                text_color="white"
             )
             next_btn.pack(side="left", padx=1)
         
@@ -289,7 +304,10 @@ class DataTable(ctk.CTkFrame):
                 command=lambda: self._change_page(self.pagination_result.total_pages),
                 width=30,
                 height=30,
-                font=ctk.CTkFont(size=12)
+                font=ctk.CTkFont(size=12),
+                fg_color=LUSH_FOREST_COLORS["secondary"],
+                hover_color=LUSH_FOREST_COLORS["accent"],
+                text_color="white"
             )
             last_btn.pack(side="left", padx=1)
         
@@ -301,7 +319,7 @@ class DataTable(ctk.CTkFrame):
             per_page_frame,
             text="Per page:",
             font=ctk.CTkFont(size=11),
-            text_color=("gray60", "gray40")
+            text_color=LUSH_FOREST_COLORS["text_medium"]
         )
         per_page_label.pack(side="left", padx=(0, 5))
         
@@ -450,49 +468,54 @@ class DataTable(ctk.CTkFrame):
             self.sheet.bind("<Double-Button-1>", self._on_sheet_double_click)
     
     def _apply_dark_theme_to_sheet(self):
-        """Apply dark theme styling to tksheet"""
+        """Apply lush forest theme styling to tksheet"""
         if not self.sheet:
             return
             
         try:
-            # Dark theme colors
-            dark_bg = "#2b2b2b"
-            dark_fg = "#ffffff"
-            header_bg = "#1f538d"
-            header_fg = "#ffffff"
-            selected_bg = "#4a9eff"
-            grid_color = "#404040"
+            # Lush forest theme colors
+            table_bg = LUSH_FOREST_COLORS["light"]  # Light mint green background
+            table_fg = LUSH_FOREST_COLORS["text_dark"]  # Dark text
+            header_bg = LUSH_FOREST_COLORS["primary"]  # Dark forest green header
+            header_fg = "#ffffff"  # White header text
+            selected_bg = LUSH_FOREST_COLORS["accent"]  # Accent green for selection
+            grid_color = LUSH_FOREST_COLORS["secondary"]  # Medium green grid
             
-            # Apply dark theme
+            # Apply lush forest theme
             self.sheet.set_options(
-                table_bg=dark_bg,
-                table_fg=dark_fg,
+                table_bg=table_bg,
+                table_fg=table_fg,
                 table_selected_cells_bg=selected_bg,
                 table_selected_cells_fg="#ffffff",
-                index_bg=dark_bg,
-                index_fg=dark_fg,
+                index_bg=table_bg,
+                index_fg=table_fg,
                 header_bg=header_bg,
                 header_fg=header_fg,
-                header_selected_cells_bg="#3b82f6",
+                header_selected_cells_bg=LUSH_FOREST_COLORS["accent"],
                 header_selected_cells_fg="#ffffff",
                 top_left_bg=header_bg,
                 top_left_fg=header_fg,
                 table_grid_fg=grid_color,
                 header_grid_fg=grid_color,
                 index_grid_fg=grid_color,
-                selected_rows_bg="#1e40af",
+                selected_rows_bg=LUSH_FOREST_COLORS["accent"],
                 selected_rows_fg="#ffffff",
-                selected_columns_bg="#1e40af",
-                selected_columns_fg="#ffffff"
+                selected_columns_bg=LUSH_FOREST_COLORS["accent"],
+                selected_columns_fg="#ffffff",
+                # Try to customize scrollbar colors with darker green
+                scrollbar_bg=LUSH_FOREST_COLORS["primary"],
+                scrollbar_fg=LUSH_FOREST_COLORS["secondary"],
+                scrollbar_button_bg=LUSH_FOREST_COLORS["dark"],
+                scrollbar_button_fg="#ffffff"
             )
             
-            print("✅ Applied dark theme to tksheet")
+            print("✅ Applied lush forest theme to tksheet")
             
         except Exception as e:
-            print(f"⚠️ Could not apply dark theme to tksheet: {e}")
+            print(f"⚠️ Could not apply lush forest theme to tksheet: {e}")
     
     def _create_dark_treeview(self):
-        """Create dark-styled Treeview as fallback"""
+        """Create lush forest themed Treeview as fallback"""
         try:
             from tkinter import ttk
             
@@ -500,29 +523,29 @@ class DataTable(ctk.CTkFrame):
             self.table_frame.grid_columnconfigure(0, weight=1)
             self.table_frame.grid_rowconfigure(0, weight=1)
             
-            # Setup dark Treeview style
+            # Setup lush forest Treeview style
             style = ttk.Style()
             style.theme_use("default")
             
-            # Dark mode styling with custom font sizes
+            # Lush forest theme styling with custom font sizes
             style.configure(
-                "Dark.Treeview",
-                background="#2b2b2b",
-                foreground="#ffffff",
-                fieldbackground="#2b2b2b",
+                "Forest.Treeview",
+                background=LUSH_FOREST_COLORS["light"],
+                foreground=LUSH_FOREST_COLORS["text_dark"],
+                fieldbackground=LUSH_FOREST_COLORS["light"],
                 rowheight=35,  # More breathing room
                 font=("Arial", self.font_size)
             )
             style.configure(
-                "Dark.Treeview.Heading",
+                "Forest.Treeview.Heading",
                 font=("Arial", self.header_font_size, "bold"),
-                background="#1f538d",
+                background=LUSH_FOREST_COLORS["primary"],
                 foreground="#ffffff",
                 relief="flat"
             )
             style.map(
-                "Dark.Treeview",
-                background=[("selected", "#4a9eff")],
+                "Forest.Treeview",
+                background=[("selected", LUSH_FOREST_COLORS["accent"])],
                 foreground=[("selected", "#ffffff")]
             )
             
@@ -536,7 +559,7 @@ class DataTable(ctk.CTkFrame):
                 self.table_frame,  # Use table_frame as parent
                 columns=columns,
                 show="headings",
-                style="Dark.Treeview"
+                style="Forest.Treeview"
             )
             
             # Set up headers
@@ -546,9 +569,21 @@ class DataTable(ctk.CTkFrame):
                     self.tree.heading(col_id, text=header)
                     self.tree.column(col_id, width=120, anchor="center")
             
-            # Add scrollbar
+            # Add scrollbar with forest theme
             scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.tree.yview)
             self.tree.configure(yscrollcommand=scrollbar.set)
+            
+            # Style the scrollbar to match forest theme with darker green
+            style = ttk.Style()
+            style.configure("Forest.Vertical.TScrollbar",
+                background=LUSH_FOREST_COLORS["primary"],  # Darker green for scrollbar
+                troughcolor=LUSH_FOREST_COLORS["secondary"],  # Medium green trough
+                borderwidth=0,
+                arrowcolor="white",
+                darkcolor=LUSH_FOREST_COLORS["primary"],
+                lightcolor=LUSH_FOREST_COLORS["primary"]
+            )
+            scrollbar.configure(style="Forest.Vertical.TScrollbar")
             
             # Grid the widgets
             self.tree.grid(row=0, column=0, sticky="nsew", padx=(10, 0), pady=10)
@@ -566,7 +601,7 @@ class DataTable(ctk.CTkFrame):
             # Bind click events for action column buttons
             self.tree.bind("<Button-1>", self._on_treeview_click)
                 
-            print("✅ Created dark-styled Treeview fallback")
+            print("✅ Created lush forest themed Treeview fallback")
             
         except Exception as e:
             print(f"❌ Error creating dark Treeview: {e}")
@@ -683,7 +718,8 @@ class DataTable(ctk.CTkFrame):
                 header_label = ctk.CTkLabel(
                     self.scrollable_frame,
                     text=header,
-                    font=ctk.CTkFont(size=14, weight="bold")
+                    font=ctk.CTkFont(size=14, weight="bold"),
+                    text_color=LUSH_FOREST_COLORS["text_dark"]
                 )
                 header_label.grid(row=0, column=col, padx=5, pady=5, sticky="ew")
         
@@ -693,7 +729,8 @@ class DataTable(ctk.CTkFrame):
                 cell_label = ctk.CTkLabel(
                     self.scrollable_frame,
                     text=str(cell_data),
-                    font=ctk.CTkFont(size=12)
+                    font=ctk.CTkFont(size=12),
+                    text_color=LUSH_FOREST_COLORS["text_dark"]
                 )
                 cell_label.grid(row=row_idx, column=col_idx, padx=5, pady=2, sticky="ew")
         

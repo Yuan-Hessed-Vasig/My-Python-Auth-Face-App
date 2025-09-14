@@ -104,3 +104,4 @@ This will show you exactly how different folder names match to student records.
 - **Multiple matches**: If folder name matches multiple students, the first match is used
 - **Case sensitivity**: Matching is case-insensitive
 - **Special characters**: Avoid special characters in folder names
+

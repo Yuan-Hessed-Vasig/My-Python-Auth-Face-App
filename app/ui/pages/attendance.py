@@ -3,6 +3,7 @@ from datetime import datetime
 from app.ui.widget.gradient_button import GradientButton
 from app.ui.widget.data_table import DataTable
 from app.services.attendance_service import AttendanceService
+from app.ui.app import LUSH_FOREST_COLORS
 import threading
 import cv2
 from PIL import Image, ImageTk
@@ -17,7 +18,7 @@ import os
 
 class AttendancePage(ctk.CTkFrame):
     def __init__(self, master):
-        super().__init__(master, fg_color="transparent")
+        super().__init__(master, fg_color=LUSH_FOREST_COLORS["light"])
         try:
             # Camera state
             self._camera_running = False
@@ -36,12 +37,15 @@ class AttendancePage(ctk.CTkFrame):
             self._build_fallback()
     
     def _build(self):
+        # Apply lush forest background
+        self.configure(fg_color=LUSH_FOREST_COLORS["light"])
+        
         # Main container
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         
         # Header section
-        header_frame = ctk.CTkFrame(self, corner_radius=15)
+        header_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="white")
         header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
         header_frame.grid_columnconfigure(1, weight=1)
         
@@ -49,12 +53,13 @@ class AttendancePage(ctk.CTkFrame):
         title_label = ctk.CTkLabel(
             header_frame,
             text="📹 Attendance Tracking",
-            font=ctk.CTkFont(size=32, weight="bold")
+            font=ctk.CTkFont(size=32, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         title_label.grid(row=0, column=0, sticky="w", padx=30, pady=20)
         
         # Control buttons
-        controls_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        controls_frame = ctk.CTkFrame(header_frame, fg_color="white")
         controls_frame.grid(row=0, column=1, sticky="e", padx=30, pady=20)
         
         try:
@@ -105,13 +110,13 @@ class AttendancePage(ctk.CTkFrame):
             stop_btn.pack(side="left")
         
         # Main content area
-        content_frame = ctk.CTkFrame(self, corner_radius=15)
+        content_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="white")
         content_frame.grid(row=1, column=0, sticky="nsew")
         content_frame.grid_columnconfigure((0, 1), weight=1)
         content_frame.grid_rowconfigure(0, weight=1)
         
         # Camera section
-        camera_frame = ctk.CTkFrame(content_frame, corner_radius=10)
+        camera_frame = ctk.CTkFrame(content_frame, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
         camera_frame.grid(row=0, column=0, sticky="nsew", padx=(20, 10), pady=20)
         camera_frame.grid_columnconfigure(0, weight=1)
         camera_frame.grid_rowconfigure(1, weight=1)
@@ -119,12 +124,13 @@ class AttendancePage(ctk.CTkFrame):
         camera_title = ctk.CTkLabel(
             camera_frame,
             text="📹 Face Recognition Camera",
-            font=ctk.CTkFont(size=18, weight="bold")
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         camera_title.grid(row=0, column=0, pady=(20, 10))
         
         # Camera placeholder
-        self.camera_placeholder = ctk.CTkFrame(camera_frame, corner_radius=10)
+        self.camera_placeholder = ctk.CTkFrame(camera_frame, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
         self.camera_placeholder.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
 
         # Image label (will display camera frames)
@@ -132,13 +138,13 @@ class AttendancePage(ctk.CTkFrame):
             self.camera_placeholder,
             text="📷\n\nCamera Feed\nComing Soon!\n\nFeatures:\n• Real-time face detection\n• Student recognition\n• Automatic attendance marking\n• Live preview\n• Multiple face detection",
             font=ctk.CTkFont(size=16),
-            text_color=("gray60", "gray40"),
+            text_color=LUSH_FOREST_COLORS["text_medium"],
             justify="center"
         )
         self.camera_label.pack(expand=True, fill="both", padx=20, pady=20)
         
         # Attendance log section
-        log_frame = ctk.CTkFrame(content_frame, corner_radius=10)
+        log_frame = ctk.CTkFrame(content_frame, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
         log_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 20), pady=20)
         log_frame.grid_columnconfigure(0, weight=1)
         log_frame.grid_rowconfigure(1, weight=1)
@@ -146,7 +152,8 @@ class AttendancePage(ctk.CTkFrame):
         log_title = ctk.CTkLabel(
             log_frame,
             text="📋 Today's Attendance Log",
-            font=ctk.CTkFont(size=18, weight="bold")
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         log_title.grid(row=0, column=0, pady=(20, 10))
         
@@ -154,9 +161,20 @@ class AttendancePage(ctk.CTkFrame):
         self.detected_cards_frame = ctk.CTkScrollableFrame(
             log_frame,
             corner_radius=10,
-            height=400  # Increased height since we removed the table
+            height=400,  # Increased height since we removed the table
+            fg_color=LUSH_FOREST_COLORS["light"]
         )
         self.detected_cards_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        
+        # Add placeholder content to make the log area look better
+        placeholder_label = ctk.CTkLabel(
+            self.detected_cards_frame,
+            text="📋 No attendance records yet\n\nWhen students are detected by the camera,\ntheir attendance will appear here.",
+            font=ctk.CTkFont(size=14),
+            text_color=LUSH_FOREST_COLORS["text_medium"],
+            justify="center"
+        )
+        placeholder_label.pack(expand=True, fill="both", padx=20, pady=50)
         
     
     
@@ -345,6 +363,7 @@ class AttendancePage(ctk.CTkFrame):
             student_no = student_info.get('student_id', '')
             section = student_info.get('section', '') or 'N/A'
             timestamp = datetime.now().strftime("%H:%M:%S")
+            student_pk = student_info.get('id')
 
             card = ctk.CTkFrame(self.detected_cards_frame, corner_radius=10)
             card.pack(fill='x', padx=10, pady=6)
@@ -362,22 +381,81 @@ class AttendancePage(ctk.CTkFrame):
             mid.grid(row=0, column=1, sticky='w', padx=5, pady=10)
             name_lbl = ctk.CTkLabel(mid, text=full_name or 'UNKNOWN', font=ctk.CTkFont(size=14, weight='bold'))
             name_lbl.pack(anchor='w')
-            meta_lbl = ctk.CTkLabel(mid, text=f"{student_no} • {section} • {timestamp}", font=ctk.CTkFont(size=12), text_color=("gray60","gray40"))
+            meta_lbl = ctk.CTkLabel(mid, text=f"{student_no} • {section} • {timestamp}", font=ctk.CTkFont(size=12), text_color=LUSH_FOREST_COLORS["text_medium"])
             meta_lbl.pack(anchor='w')
 
-            # Right: status
-            status_lbl = ctk.CTkLabel(card, text='✅ Present', font=ctk.CTkFont(size=12, weight='bold'), text_color='#10b981')
-            status_lbl.grid(row=0, column=2, padx=10)
+            # Right: status and remove button
+            right_frame = ctk.CTkFrame(card, fg_color='transparent')
+            right_frame.grid(row=0, column=2, padx=10, pady=10)
+            
+            status_lbl = ctk.CTkLabel(right_frame, text='✅ Present', font=ctk.CTkFont(size=12, weight='bold'), text_color='#10b981')
+            status_lbl.pack(anchor='e')
+            
+            # Remove button
+            remove_btn = ctk.CTkButton(
+                right_frame,
+                text="🗑️ Remove",
+                command=lambda: self._remove_detected_card(card, student_pk),
+                width=80,
+                height=25,
+                font=ctk.CTkFont(size=10),
+                fg_color="#ef4444",
+                hover_color="#dc2626",
+                corner_radius=12
+            )
+            remove_btn.pack(anchor='e', pady=(5, 0))
 
             # Layout
             card.grid_columnconfigure(1, weight=1)
             
             # Add a subtle animation effect
-            card.configure(fg_color=("gray90", "gray20"))
-            self.after(100, lambda: card.configure(fg_color=("gray85", "gray25")))
+            card.configure(fg_color=LUSH_FOREST_COLORS["light"])
+            self.after(100, lambda: card.configure(fg_color=LUSH_FOREST_COLORS["light"]))
             
         except Exception as e:
             print(f"⚠️ Failed to push detected card: {e}")
+
+    def _remove_detected_card(self, card, student_pk):
+        """Remove a detected card and revert the active state to allow re-detection."""
+        try:
+            if not card or not card.winfo_exists():
+                return
+                
+            # Remove the card from the UI
+            card.destroy()
+            
+            # Remove from detected card IDs set to allow re-detection
+            if student_pk and student_pk in self._detected_card_ids:
+                self._detected_card_ids.remove(student_pk)
+                print(f"✅ Removed card for student ID {student_pk} - can be detected again")
+            
+            # Optional: Remove the attendance record from database
+            # This allows the student to be marked present again
+            if student_pk:
+                try:
+                    # Get today's attendance record for this student
+                    today = datetime.now().date()
+                    query = """
+                        SELECT id FROM attendance
+                        WHERE student_id = %s AND DATE(timestamp) = %s
+                        ORDER BY timestamp DESC
+                        LIMIT 1
+                    """
+                    from app.services.data_service import DataService
+                    attendance_record = DataService.execute_query(query, (student_pk, today))
+                    
+                    if attendance_record:
+                        attendance_id = attendance_record[0]['id']
+                        # Delete the attendance record
+                        delete_query = "DELETE FROM attendance WHERE id = %s"
+                        DataService.execute_query(delete_query, (attendance_id,))
+                        print(f"✅ Removed attendance record for student ID {student_pk}")
+                        
+                except Exception as e:
+                    print(f"⚠️ Failed to remove attendance record: {e}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to remove detected card: {e}")
 
     def _init_recognition_engine(self):
         """Initialize FaceRecognitionEngine by loading encodings if folder exists."""
@@ -413,7 +491,7 @@ class AttendancePage(ctk.CTkFrame):
                 self,
                 text="⚠️ Attendance Page Error\n\nUnable to load attendance page properly.\nPlease check your database connection.",
                 font=ctk.CTkFont(size=16),
-                text_color=("gray60", "gray40"),
+                text_color=LUSH_FOREST_COLORS["text_medium"],
                 justify="center"
             )
             error_label.pack(expand=True, fill="both", padx=50, pady=50)

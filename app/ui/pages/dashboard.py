@@ -2,11 +2,12 @@ import customtkinter as ctk
 from datetime import datetime
 from app.services.students_service import StudentsService
 from app.services.attendance_service import AttendanceService
+from app.ui.app import LUSH_FOREST_COLORS
 import threading
 
 class DashboardPage(ctk.CTkFrame):
     def __init__(self, master):
-        super().__init__(master, fg_color="transparent")
+        super().__init__(master, fg_color=LUSH_FOREST_COLORS["light"])
         try:
             self._build()
         except Exception as e:
@@ -14,12 +15,15 @@ class DashboardPage(ctk.CTkFrame):
             self._build_fallback()
     
     def _build(self):
+        # Apply lush forest background
+        self.configure(fg_color=LUSH_FOREST_COLORS["light"])
+        
         # Main container
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         
         # Header section
-        header_frame = ctk.CTkFrame(self, corner_radius=15)
+        header_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="white")
         header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
         header_frame.grid_columnconfigure(1, weight=1)
         
@@ -27,7 +31,8 @@ class DashboardPage(ctk.CTkFrame):
         welcome_label = ctk.CTkLabel(
             header_frame,
             text="📊 Dashboard",
-            font=ctk.CTkFont(size=32, weight="bold")
+            font=ctk.CTkFont(size=32, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         welcome_label.grid(row=0, column=0, sticky="w", padx=30, pady=20)
         
@@ -37,12 +42,12 @@ class DashboardPage(ctk.CTkFrame):
             header_frame,
             text=current_time,
             font=ctk.CTkFont(size=14),
-            text_color=("gray60", "gray40")
+            text_color=LUSH_FOREST_COLORS["text_medium"]
         )
         time_label.grid(row=0, column=1, sticky="e", padx=30, pady=20)
         
         # Stats cards container
-        stats_frame = ctk.CTkFrame(self, corner_radius=15)
+        stats_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="white")
         stats_frame.grid(row=1, column=0, sticky="nsew")
         stats_frame.grid_columnconfigure((0, 1, 2), weight=1)
         stats_frame.grid_rowconfigure((0, 1), weight=1)
@@ -51,14 +56,15 @@ class DashboardPage(ctk.CTkFrame):
         self._load_and_display_dashboard_stats(stats_frame)
         
         # Recent activity section
-        activity_frame = ctk.CTkFrame(stats_frame, corner_radius=10)
+        activity_frame = ctk.CTkFrame(stats_frame, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
         activity_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=20, pady=20)
         activity_frame.grid_columnconfigure(0, weight=1)
         
         activity_title = ctk.CTkLabel(
             activity_frame,
             text="📋 Recent Activity",
-            font=ctk.CTkFont(size=20, weight="bold")
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         activity_title.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 10))
         
@@ -76,13 +82,14 @@ class DashboardPage(ctk.CTkFrame):
                 activity_frame,
                 text=activity,
                 font=ctk.CTkFont(size=14),
-                anchor="w"
+                anchor="w",
+                text_color=LUSH_FOREST_COLORS["text_dark"]
             )
             activity_label.grid(row=i+1, column=0, sticky="ew", padx=20, pady=5)
     
     def _create_stat_card(self, parent, title, value, subtitle, row, col):
         """Create a statistics card"""
-        card = ctk.CTkFrame(parent, corner_radius=10)
+        card = ctk.CTkFrame(parent, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
         card.grid(row=row, column=col, sticky="nsew", padx=20, pady=20)
         card.grid_columnconfigure(0, weight=1)
         
@@ -90,7 +97,8 @@ class DashboardPage(ctk.CTkFrame):
         title_label = ctk.CTkLabel(
             card,
             text=title,
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color=LUSH_FOREST_COLORS["text_dark"]
         )
         title_label.grid(row=0, column=0, pady=(20, 5))
         
@@ -99,7 +107,7 @@ class DashboardPage(ctk.CTkFrame):
             card,
             text=value,
             font=ctk.CTkFont(size=36, weight="bold"),
-            text_color=("#1f538d", "#4a9eff")
+            text_color=LUSH_FOREST_COLORS["primary"]
         )
         value_label.grid(row=1, column=0, pady=5)
         
@@ -108,7 +116,7 @@ class DashboardPage(ctk.CTkFrame):
             card,
             text=subtitle,
             font=ctk.CTkFont(size=12),
-            text_color=("gray60", "gray40")
+            text_color=LUSH_FOREST_COLORS["text_medium"]
         )
         subtitle_label.grid(row=2, column=0, pady=(5, 20))
     
@@ -168,7 +176,7 @@ class DashboardPage(ctk.CTkFrame):
                 self,
                 text="⚠️ Dashboard Error\n\nUnable to load dashboard properly.\nPlease check your database connection.",
                 font=ctk.CTkFont(size=16),
-                text_color=("gray60", "gray40"),
+                text_color=LUSH_FOREST_COLORS["text_medium"],
                 justify="center"
             )
             error_label.pack(expand=True, fill="both", padx=50, pady=50)
