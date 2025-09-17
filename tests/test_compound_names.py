@@ -6,7 +6,7 @@ import sys
 import os
 
 # Add the app directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from app.services.face.recognition_algorithm import find_student_by_folder_name
 

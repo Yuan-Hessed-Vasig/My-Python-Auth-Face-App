@@ -9,3 +9,10 @@ tksheet
 face-recognition
 psutil
 numpy
+pywinstyles
+scikit-learn
+dlib
+# Optional for advanced features
+# deepface
+# tensorflow
+# torch

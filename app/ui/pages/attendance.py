@@ -167,14 +167,14 @@ class AttendancePage(ctk.CTkFrame):
         self.detected_cards_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         
         # Add placeholder content to make the log area look better
-        placeholder_label = ctk.CTkLabel(
+        self.placeholder_label = ctk.CTkLabel(
             self.detected_cards_frame,
             text="📋 No attendance records yet\n\nWhen students are detected by the camera,\ntheir attendance will appear here.",
             font=ctk.CTkFont(size=14),
             text_color=LUSH_FOREST_COLORS["text_medium"],
             justify="center"
         )
-        placeholder_label.pack(expand=True, fill="both", padx=20, pady=50)
+        self.placeholder_label.pack(expand=True, fill="both", padx=20, pady=50)
         
     
     
@@ -186,6 +186,15 @@ class AttendancePage(ctk.CTkFrame):
         if self._camera_running:
             print("ℹ️ Camera already running")
             return
+        
+        # Ensure previous camera is properly stopped
+        if self._cap is not None:
+            try:
+                self._cap.release()
+            except Exception:
+                pass
+            self._cap = None
+        
         print("🔄 Starting camera for face recognition...")
 
         # Try to open default camera (prefer DirectShow on Windows)
@@ -224,13 +233,29 @@ class AttendancePage(ctk.CTkFrame):
             return
         print("🔄 Stopping camera...")
         self._camera_running = False
-        # Wait briefly for thread to exit
+        
+        # Properly release camera resources
+        if self._cap is not None:
+            try:
+                self._cap.release()
+            except Exception as e:
+                print(f"⚠️ Error releasing camera: {e}")
+            self._cap = None
+        
+        # Wait for thread to exit
         if self._camera_thread and self._camera_thread.is_alive():
-            self._camera_thread.join(timeout=1.0)
+            self._camera_thread.join(timeout=2.0)
         self._camera_thread = None
-        # Clear image
+        
+        # Clear image references to prevent memory leaks
+        self._latest_photo = None
+        
+        # Clear image display safely
         def clear_label():
-            self.camera_label.configure(image=None, text="📷\n\nCamera Stopped")
+            try:
+                self.camera_label.configure(image=None, text="📷\n\nCamera Stopped")
+            except Exception as e:
+                print(f"⚠️ Error clearing camera label: {e}")
         self.after(0, clear_label)
 
     def _camera_loop(self):
@@ -269,7 +294,12 @@ class AttendancePage(ctk.CTkFrame):
             self._latest_photo = photo  # prevent GC
 
             def update_image():
-                self.camera_label.configure(image=photo, text="")
+                try:
+                    # Only update if camera is still running and label exists
+                    if self._camera_running and self.camera_label.winfo_exists():
+                        self.camera_label.configure(image=photo, text="")
+                except Exception as e:
+                    print(f"⚠️ Error updating camera image: {e}")
 
             self.after(0, update_image)
 
@@ -359,27 +389,31 @@ class AttendancePage(ctk.CTkFrame):
             if not hasattr(self, 'detected_cards_frame') or not self.detected_cards_frame.winfo_exists():
                 return
 
+            # Remove placeholder text if it exists
+            if hasattr(self, 'placeholder_label') and self.placeholder_label.winfo_exists():
+                self.placeholder_label.destroy()
+
             full_name = f"{student_info.get('first_name','')} {student_info.get('last_name','')}".strip()
             student_no = student_info.get('student_id', '')
             section = student_info.get('section', '') or 'N/A'
             timestamp = datetime.now().strftime("%H:%M:%S")
             student_pk = student_info.get('id')
 
-            card = ctk.CTkFrame(self.detected_cards_frame, corner_radius=10)
+            card = ctk.CTkFrame(self.detected_cards_frame, corner_radius=10, fg_color=LUSH_FOREST_COLORS["light"])
             card.pack(fill='x', padx=10, pady=6)
 
             # Left: initials circle
-            left = ctk.CTkFrame(card, width=48, height=48, corner_radius=24)
+            left = ctk.CTkFrame(card, width=48, height=48, corner_radius=24, fg_color=LUSH_FOREST_COLORS["primary"])
             left.grid(row=0, column=0, padx=10, pady=10)
             left.grid_propagate(False)
             initials = ''.join([p[0] for p in full_name.split() if p])[:2].upper() or '?'
-            initials_lbl = ctk.CTkLabel(left, text=initials, font=ctk.CTkFont(size=16, weight='bold'))
+            initials_lbl = ctk.CTkLabel(left, text=initials, font=ctk.CTkFont(size=16, weight='bold'), text_color="white")
             initials_lbl.place(relx=0.5, rely=0.5, anchor='center')
 
             # Middle: name + meta
             mid = ctk.CTkFrame(card, fg_color='transparent')
             mid.grid(row=0, column=1, sticky='w', padx=5, pady=10)
-            name_lbl = ctk.CTkLabel(mid, text=full_name or 'UNKNOWN', font=ctk.CTkFont(size=14, weight='bold'))
+            name_lbl = ctk.CTkLabel(mid, text=full_name or 'UNKNOWN', font=ctk.CTkFont(size=14, weight='bold'), text_color=LUSH_FOREST_COLORS["text_dark"])
             name_lbl.pack(anchor='w')
             meta_lbl = ctk.CTkLabel(mid, text=f"{student_no} • {section} • {timestamp}", font=ctk.CTkFont(size=12), text_color=LUSH_FOREST_COLORS["text_medium"])
             meta_lbl.pack(anchor='w')
@@ -388,7 +422,7 @@ class AttendancePage(ctk.CTkFrame):
             right_frame = ctk.CTkFrame(card, fg_color='transparent')
             right_frame.grid(row=0, column=2, padx=10, pady=10)
             
-            status_lbl = ctk.CTkLabel(right_frame, text='✅ Present', font=ctk.CTkFont(size=12, weight='bold'), text_color='#10b981')
+            status_lbl = ctk.CTkLabel(right_frame, text='✅ Present', font=ctk.CTkFont(size=12, weight='bold'), text_color=LUSH_FOREST_COLORS["primary"])
             status_lbl.pack(anchor='e')
             
             # Remove button
@@ -497,3 +531,21 @@ class AttendancePage(ctk.CTkFrame):
             error_label.pack(expand=True, fill="both", padx=50, pady=50)
         except Exception as e:
             print(f"❌ Error creating fallback attendance page: {e}")
+    
+    def cleanup(self):
+        """Clean up camera resources when page is destroyed"""
+        try:
+            self._camera_running = False
+            if self._cap is not None:
+                self._cap.release()
+                self._cap = None
+            if self._camera_thread and self._camera_thread.is_alive():
+                self._camera_thread.join(timeout=1.0)
+            self._camera_thread = None
+            self._latest_photo = None
+        except Exception as e:
+            print(f"⚠️ Error during cleanup: {e}")
+    
+    def __del__(self):
+        """Destructor to ensure cleanup"""
+        self.cleanup()

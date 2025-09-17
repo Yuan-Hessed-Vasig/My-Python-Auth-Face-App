@@ -3,6 +3,10 @@ Example of using the new CRUD-enabled DataTable
 Run this to test the new functionality
 """
 
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 import customtkinter as ctk
 from app.ui.widget.data_table import DataTable
 from tkinter import messagebox

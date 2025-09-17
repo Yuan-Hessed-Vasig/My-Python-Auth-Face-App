@@ -30,6 +30,16 @@ except ImportError:
                 "use_hog_model": True,
             }
 
+# Import advanced modules
+try:
+    from app.services.face.image_preprocessor import ImagePreprocessor
+    from app.services.face.confidence_validator import ConfidenceValidator, MultiFrameValidator
+    from app.services.face.gpu_acceleration import GPUAcceleratedRecognition, PerformanceMonitor
+    ADVANCED_FEATURES_AVAILABLE = True
+except ImportError:
+    ADVANCED_FEATURES_AVAILABLE = False
+    print("⚠️ Advanced features not available. Install required dependencies.")
+
 
 def load_known_faces_from_directory(students_dir: str) -> Tuple[List[np.ndarray], List[str], List[Dict]]:
     """
@@ -124,11 +134,12 @@ def build_next_image_path(base_dir: str, student_id: str) -> str:
 
 class FaceRecognitionEngine:
     """
-    Lightweight face recognition engine using face_recognition.
+    Enhanced face recognition engine with advanced features.
 
     - Maintains known encodings and names
     - Recognizes faces on frames (with optional downscale and frame-skipping)
     - Returns detections and optionally an annotated frame
+    - Includes advanced preprocessing, confidence validation, and GPU acceleration
     """
 
     def __init__(
@@ -140,7 +151,8 @@ class FaceRecognitionEngine:
         process_every_n_frames: Optional[int] = None,
         downscale_factor: Optional[float] = None,
         min_detection_interval_ms: Optional[int] = None,
-        performance_mode: str = "balanced"
+        performance_mode: str = "balanced",
+        use_advanced_features: bool = True
     ) -> None:
         # Load configuration
         config = PerformanceConfig.get_config(performance_mode)
@@ -162,6 +174,24 @@ class FaceRecognitionEngine:
         self._detection_cache_duration = config["detection_cache_duration"]
         self._last_cache_time = 0.0
         self._use_hog_model = config.get("use_hog_model", True)
+        
+        # Advanced features
+        self.use_advanced_features = use_advanced_features and ADVANCED_FEATURES_AVAILABLE
+        
+        if self.use_advanced_features:
+            self.preprocessor = ImagePreprocessor()
+            self.confidence_validator = ConfidenceValidator(min_confidence=self.match_threshold)
+            self.multi_frame_validator = MultiFrameValidator(required_frames=3)
+            self.gpu_accelerator = GPUAcceleratedRecognition()
+            self.performance_monitor = PerformanceMonitor()
+            print("✅ Advanced face recognition features enabled")
+        else:
+            self.preprocessor = None
+            self.confidence_validator = None
+            self.multi_frame_validator = None
+            self.gpu_accelerator = None
+            self.performance_monitor = None
+            print("ℹ️ Using basic face recognition features")
 
     def _annotate_frame(self, frame_bgr: np.ndarray, detections: List[Dict], draw_annotations: bool) -> Tuple[np.ndarray, List[Dict]]:
         """Helper method to annotate frame with detections"""
@@ -210,21 +240,17 @@ class FaceRecognitionEngine:
         draw_annotations: bool = True,
     ) -> Tuple[np.ndarray, List[Dict]]:
         """
-        Recognize faces in a BGR frame.
+        Enhanced face recognition with advanced features.
 
         Returns (annotated_frame_bgr, detections)
-        where detections is a list of dicts:
-          {
-            'top': int, 'right': int, 'bottom': int, 'left': int,
-            'name': str,  # upper-cased student name or 'UNKNOWN'
-            'distance': float,
-            'is_known': bool
-          }
-
-        Uses frame-skipping for performance; non-processed frames are passed-through with empty detections.
+        where detections is a list of dicts with enhanced confidence scoring
         """
         if frame_bgr is None or frame_bgr.size == 0:
             return frame_bgr, []
+
+        # Performance monitoring
+        if self.performance_monitor:
+            self.performance_monitor.start_frame_timer()
 
         # Time-based throttle
         if self.min_detection_interval_ms > 0:
@@ -244,9 +270,18 @@ class FaceRecognitionEngine:
             # Return frame as-is without detections to reduce CPU load
             return frame_bgr, []
 
+        # Enhanced preprocessing if available
+        if self.use_advanced_features and self.preprocessor:
+            # Apply image enhancement
+            enhanced_frame = self.preprocessor.enhance_image(frame_bgr)
+            # Normalize lighting
+            processed_frame = self.preprocessor.normalize_lighting(enhanced_frame)
+        else:
+            processed_frame = frame_bgr
+
         # Downscale for faster processing
         small_bgr = cv2.resize(
-            frame_bgr, (0, 0), fx=self.downscale_factor, fy=self.downscale_factor
+            processed_frame, (0, 0), fx=self.downscale_factor, fy=self.downscale_factor
         )
         rgb_small = cv2.cvtColor(small_bgr, cv2.COLOR_BGR2RGB)
 
@@ -259,29 +294,56 @@ class FaceRecognitionEngine:
         detections: List[Dict] = []
 
         for enc, (top, right, bottom, left) in zip(encodings, locations):
+            # Scale back up to original frame coordinates
+            scale = int(1.0 / self.downscale_factor)
+            top_scaled, right_scaled, bottom_scaled, left_scaled = (
+                top * scale,
+                right * scale,
+                bottom * scale,
+                left * scale,
+            )
+
+            # Basic recognition
             student_id = None
             student_info = None
             best_distance = 1.0
             is_known = False
+            confidence = 0.0
 
             if self.known_encodings:
                 distances = face_recognition.face_distance(self.known_encodings, enc)
                 best_idx = int(np.argmin(distances))
                 best_distance = float(distances[best_idx])
+                confidence = max(0, 1 - best_distance)
 
                 if best_distance <= self.match_threshold:
                     is_known = True
                     student_id = self.known_student_ids[best_idx]
                     student_info = self.known_student_info[best_idx]
 
-            # Scale back up to original frame coordinates
-            scale = int(1.0 / self.downscale_factor)
-            top, right, bottom, left = (
-                top * scale,
-                right * scale,
-                bottom * scale,
-                left * scale,
-            )
+            # Advanced confidence validation if available
+            if self.use_advanced_features and self.confidence_validator:
+                face_region = (left_scaled, top_scaled, right_scaled - left_scaled, bottom_scaled - top_scaled)
+                confidence_result = self.confidence_validator.calculate_advanced_confidence(
+                    enc, self.known_encodings, face_region, frame_bgr
+                )
+                
+                # Update confidence with advanced scoring
+                confidence = confidence_result['advanced_confidence']
+                is_known = confidence_result['is_valid'] and is_known
+                
+                # Update temporal history
+                self.confidence_validator.update_temporal_history(enc, confidence)
+                
+                # Add to multi-frame validator
+                if student_id:
+                    detection_data = {
+                        'student_id': student_id,
+                        'confidence': confidence,
+                        'face_region': face_region,
+                        'student_info': student_info
+                    }
+                    self.multi_frame_validator.add_detection(self._frame_count, detection_data)
 
             # Create display name
             display_name = "UNKNOWN"
@@ -292,14 +354,15 @@ class FaceRecognitionEngine:
 
             detections.append(
                 {
-                    "top": top,
-                    "right": right,
-                    "bottom": bottom,
-                    "left": left,
+                    "top": top_scaled,
+                    "right": right_scaled,
+                    "bottom": bottom_scaled,
+                    "left": left_scaled,
                     "student_id": student_id,
                     "student_info": student_info,
                     "display_name": display_name,
                     "distance": best_distance,
+                    "confidence": confidence,
                     "is_known": is_known,
                 }
             )
@@ -307,6 +370,10 @@ class FaceRecognitionEngine:
         # Cache the detections
         self._last_detections = detections
         self._last_cache_time = time.monotonic()
+
+        # End performance monitoring
+        if self.performance_monitor:
+            self.performance_monitor.end_frame_timer()
 
         return self._annotate_frame(frame_bgr, detections, draw_annotations)
 

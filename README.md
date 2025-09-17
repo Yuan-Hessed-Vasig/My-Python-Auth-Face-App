@@ -24,29 +24,33 @@ Isang modern face recognition attendance system na ginawa gamit ang Python, Cust
 ### Installation
 
 1. **Clone ang repository**
+
    ```bash
    git clone <repository-url>
    cd my_python_auth_face_app
    ```
 
 2. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Setup database (optional)**
+
    ```bash
    # Para sa MySQL setup
-   python migrate.py
+   python scripts/migrate.py
    ```
 
 4. **Run ang application**
+
    ```bash
    # Production mode
    python main.py
-   
+
    # Development mode na may hot reload
-   python dev.py
+   python scripts/dev.py
    ```
 
 ## 📁 Project Structure
@@ -54,7 +58,10 @@ Isang modern face recognition attendance system na ginawa gamit ang Python, Cust
 ```
 my_python_auth_face_app/
 ├── app/                          # Main application directory
+│   ├── assets/                   # Static assets (icons, images)
+│   │   └── icons/               # Application icons
 │   ├── data/                     # JSON data storage
+│   │   ├── images/              # Student face images
 │   │   └── users.json           # User data file
 │   ├── database/                # Database management
 │   │   ├── database_service.py  # Database operations
@@ -69,7 +76,11 @@ my_python_auth_face_app/
 │   │   └── face/               # Face recognition modules
 │   │       ├── detector.py     # Face detection
 │   │       ├── recognizer.py   # Face recognition
-│   │       └── trainer.py      # Model training
+│   │       ├── trainer.py      # Model training
+│   │       ├── advanced_recognition.py # Advanced recognition features
+│   │       ├── confidence_validator.py # Confidence validation
+│   │       ├── gpu_acceleration.py # GPU acceleration
+│   │       └── image_preprocessor.py # Image preprocessing
 │   ├── ui/                     # User interface components
 │   │   ├── app.py             # Main application window
 │   │   ├── components/        # Reusable UI components
@@ -84,16 +95,35 @@ my_python_auth_face_app/
 │   │   │   ├── attendance.py  # Attendance tracking
 │   │   │   └── shell.py       # Main application shell
 │   │   └── widget/            # Custom widgets
+│   │       ├── data_table.py  # Data table widget
 │   │       └── gradient_button.py # Gradient button widget
 │   └── utils/                 # Utility functions
-│       └── config.py          # Configuration settings
+│       ├── config.py          # Configuration settings
+│       ├── dev_state.py       # Development state management
+│       └── performance_config.py # Performance configuration
 ├── db/                        # Database files
 │   ├── database.py           # Database utilities
+│   ├── schema.sql            # Database schema
 │   └── school_face_attendance.sql # Database schema
-├── dev.py                    # Development server na may hot reload
+├── scripts/                   # Development and utility scripts
+│   ├── dev.py                # Development server na may hot reload
+│   ├── migrate.py            # Database migration runner
+│   ├── performance_tuner.py  # Performance tuning script
+│   ├── improve_face_recognition.py # Face recognition improvement
+│   └── README.md             # Scripts documentation
+├── tests/                     # Test files
+│   ├── test_simple.py        # Basic UI test
+│   ├── test_compound_names.py # Compound name matching test
+│   ├── test_db_connection.py # Database connection test
+│   └── README.md             # Tests documentation
+├── examples/                  # Example code and demonstrations
+│   ├── example_crud_table.py # CRUD DataTable example
+│   └── README.md             # Examples documentation
 ├── main.py                   # Application entry point
-├── migrate.py                # Database migration runner
-└── requirements.txt          # Python dependencies
+├── requirements.txt          # Python dependencies
+├── COMPOUND_NAMES_GUIDE.md   # Compound names guide
+├── dev_state_example.md      # Development state example
+└── README.md                 # Project documentation
 ```
 
 ## 💾 Database Schema
@@ -114,7 +144,7 @@ Edit ang `app/utils/config.py` para sa inyong database settings:
 
 ```python
 DB_HOST = "localhost"
-DB_USER = "root" 
+DB_USER = "root"
 DB_PASSWORD = "your_password"
 DB_NAME = "school_face_attendance"
 ```
@@ -158,15 +188,51 @@ STORAGE_BACKEND = "json"  # o "mysql"
 - **Navigation** - Intuitive sidebar navigation
 - **Dashboard** - Real-time statistics at insights
 
+## 📂 Project Organization
+
+Ang project ay organized sa mga sumusunod na directories:
+
+### 📁 Core Directories
+
+- **`app/`** - Main application code (UI, services, database, etc.)
+- **`db/`** - Database files at schemas
+- **`scripts/`** - Development at utility scripts
+- **`tests/`** - Test files para sa different components
+- **`examples/`** - Example code at demonstrations
+
+### 🛠️ Scripts Directory
+
+Contains development at utility scripts:
+
+- `dev.py` - Development server na may hot reload
+- `migrate.py` - Database migration runner
+- `performance_tuner.py` - Face recognition performance tuning
+- `improve_face_recognition.py` - Face recognition accuracy improvement
+
+### 🧪 Tests Directory
+
+Contains test files para sa different components:
+
+- `test_simple.py` - Basic UI functionality test
+- `test_compound_names.py` - Compound name matching test
+- `test_db_connection.py` - Database connectivity test
+
+### 📚 Examples Directory
+
+Contains example code at demonstrations:
+
+- `example_crud_table.py` - CRUD DataTable widget example
+
 ## 🔄 Development
 
 ### Hot Reload Development
 
 ```bash
-python dev.py
+python scripts/dev.py
 ```
 
 Ang development server ay:
+
 - Automatically reloads ang app kapag may file changes
 - Monitors ang `app/` directory
 - Supports F5 o Ctrl+R para sa manual reload
@@ -193,7 +259,7 @@ Ang development server ay:
 1. Install production dependencies
 2. Setup MySQL database
 3. Configure environment variables
-4. Run migrations: `python migrate.py`
+4. Run migrations: `python scripts/migrate.py`
 5. Start application: `python main.py`
 
 ## 🤝 Contributing
@@ -207,11 +273,12 @@ Ang development server ay:
 ## 📝 Sample Data
 
 Ang system ay may built-in sample data:
+
 - 500 sample students na may complete information
 - Sample attendance records
 - Default admin accounts
 
-Run `python migrate.py` para ma-setup ang sample data.
+Run `python scripts/migrate.py` para ma-setup ang sample data.
 
 ## 🔐 Security Features
 
@@ -222,7 +289,7 @@ Run `python migrate.py` para ma-setup ang sample data.
 
 ## 📱 Screenshots
 
-*Note: Add screenshots ng inyong application dito*
+_Note: Add screenshots ng inyong application dito_
 
 ## 📞 Support
 

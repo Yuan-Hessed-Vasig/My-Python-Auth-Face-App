@@ -5,9 +5,11 @@ Performance tuning script for face recognition system
 import time
 import cv2
 import numpy as np
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.services.face.recognition_algorithm import FaceRecognitionEngine, load_known_faces_from_directory
 from app.utils.performance_config import PerformanceConfig
-import os
 
 def benchmark_face_recognition(performance_mode="balanced", test_duration=10):
     """Benchmark face recognition performance"""

@@ -3,6 +3,10 @@ Simple database connection test
 Run this before launching the app to verify database connectivity
 """
 
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from app.services.data_service import DataService, test_connection
 from app.services.students_service import StudentsService
 from app.services.attendance_service import AttendanceService
